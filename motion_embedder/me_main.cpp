@@ -93,7 +93,6 @@ int main(int argc, char *argv[])
 			check_motion_array.clear();
 
 
-			//コンソールに表示
 			std::cout << "frame" << cap.get(CV_CAP_PROP_POS_FRAMES) << std::endl;
 			meter.reset();
 			meter.start();

@@ -33,7 +33,6 @@ using comp = std::complex<double>;
 
 #define PROJECT_LOOP 5
 
-// file
 const std::string log_file("C:/Users/youhei/Desktop/research_all/research_data/log_all.txt");// いつもと違うので注意
 const std::string embed_file("C:/Users/youhei/Desktop/research_all/research_data/m1_try00_embednum16x9.txt");  // ！！要確認！！
 const std::string cosine_file("C:/Users/youhei/Desktop/research_all/research_data/cosine_table.txt");
