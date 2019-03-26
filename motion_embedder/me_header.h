@@ -41,7 +41,7 @@ const std::string cosine_file("C:/Users/youhei/Desktop/research_all/research_dat
 const std::string basis_read_file("C:/IHC_videos/xxx");
 const std::string basis_write_file("C:/Users/youhei/Desktop/research_all/research_data/mp4_embedded_videos/ver3/ver3_1/ver3_1_4/xxx_ver3_1_4");
 const int num_embedframe = 20; //1回当たりの処理で埋め込むフレーム数(偶数)
-const double delta = 4; //埋め込み強度
+const double delta = 3; //埋め込み強度
 
 const int BG_width = 16;  // ブロック群の横の長さ
 const int BG_height = 9;  // ブロック群の縦の長さ

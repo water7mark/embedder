@@ -282,7 +282,7 @@ void operate_lumi(std::vector<float> &lumi, float average, float variance, int d
 				temp_lumi[j] += 1 / num_low_ave;
 			}
 		}
-
+		//b
 
 		temp_lumi[index_min]++;
 		for (int j = 0; j < (end(temp_lumi) - begin(temp_lumi)); j++) {
