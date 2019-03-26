@@ -10,7 +10,7 @@ static double cosine_table[block_height][block_width];  // DCT変換用のコサインテ
 void init_me(cv::VideoCapture* cap, std::vector<char>* embed, cv::Size* size, std::ofstream* ofs, cv::VideoWriter* writer, std::string read_file, std::string write_file, int num_embedframe) {
 		*embed = set_embeddata(embed_file);    
 		*cap = capture_open(read_file);        
-		*writer = mp4_writer_open(write_file + ".mp4", *cap);  // mp4なのでデータ量が小さいため分割の必要はない．．
+		*writer = mp4_writer_open(write_file + ".avi", *cap);  // mp4なのでデータ量が小さいため分割の必要はない．．
 		size->width = cap->get(CV_CAP_PROP_FRAME_WIDTH);
 		size->height = cap->get(CV_CAP_PROP_FRAME_HEIGHT);
 
@@ -63,7 +63,7 @@ cv::VideoCapture capture_open(const std::string read_file) {
 cv::VideoWriter mp4_writer_open(const std::string write_file, cv::VideoCapture cap) {
 	cv::VideoWriter writer;
 	cv::Size size(cap.get(CV_CAP_PROP_FRAME_WIDTH), cap.get(CV_CAP_PROP_FRAME_HEIGHT));
-	writer.open(write_file, CV_FOURCC('M', 'P', '4', 'V'), cap.get(CV_CAP_PROP_FPS), size);
+	writer.open(write_file, CV_FOURCC('D', 'I', 'V','3'), cap.get(CV_CAP_PROP_FPS), size);
 	if (!writer.isOpened()) {
 		std::cout << "can't write video file.\n";
 		getchar();

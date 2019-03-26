@@ -15,7 +15,6 @@ int main(int argc, char *argv[])
 		if (!overwrite_check(write_file)) {
 			continue;
 		}
-		//a
 		cv::VideoCapture cap;
 		cv::VideoWriter writer;
 		std::vector<char> embed;

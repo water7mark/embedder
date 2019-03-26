@@ -1,6 +1,6 @@
 #include "me_header.h"
 
-// このファイルはいずれライブラリ化すべきか
+// このファイルはいずれライブラリ化すべき
 void frame_check(cv::Mat& frame_BGR) {
 	if (frame_BGR.empty()) {  // 意味はあるのか?
 		exit(112);
