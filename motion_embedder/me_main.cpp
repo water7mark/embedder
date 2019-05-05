@@ -15,6 +15,7 @@ int main(int argc, char *argv[])
 		if (!overwrite_check(write_file)) {
 			continue;
 		}
+
 		cv::VideoCapture cap;
 		cv::VideoWriter writer;
 		std::vector<char> embed;
@@ -26,9 +27,7 @@ int main(int argc, char *argv[])
 
 		//初期化
 		init_me(&cap, &embed, &size, &ofs, &writer, read_file, write_file, num_embedframe);
-
 		int total_frames = cap.get(CV_CAP_PROP_FRAME_COUNT) - 1;  // 0フレーム分をカット
-
 
 		do {
 			int i;
@@ -40,12 +39,6 @@ int main(int argc, char *argv[])
 			cv::Mat frame_BGR(size, CV_8UC3), frame_BGR2(size, CV_8UC3);
 			cv::Mat frame_YCrCb(size, CV_8UC3), frame_YCrCb2(size, CV_8UC3);
 			std::vector<cv::Mat> check_motion_array;
-
-			check_motion_array.push_back(cv::Mat::ones(size.width, size.height, CV_8UC3)); // この要素は作るだけで使わない
-			
-			for (size_t i = 1; i < num_embedframe; i++) {  
-				check_motion_array.push_back(cv::Mat::zeros(size.width, size.height, CV_8UC3));
-			}
 
 			//timer startf
 			meter.start();
@@ -68,7 +61,7 @@ int main(int argc, char *argv[])
 			}
 
 			//埋め込み処理(num_embeddframe分だけ処理を行う)
-			motion_embedder(luminance, dst_luminance, check_motion_array, embed, cap.get(CV_CAP_PROP_POS_FRAMES), num_embedframe, delta);
+			motion_embedder(luminance, dst_luminance, embed, cap.get(CV_CAP_PROP_POS_FRAMES), num_embedframe, delta);
 
 			//timer end
 			meter.stop();
@@ -89,8 +82,6 @@ int main(int argc, char *argv[])
 				writer << frame_BGR;
 				planes.clear();
 			}
-			check_motion_array.clear();
-
 
 			std::cout << "frame" << cap.get(CV_CAP_PROP_POS_FRAMES) << std::endl;
 			meter.reset();

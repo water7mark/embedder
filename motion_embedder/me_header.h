@@ -57,10 +57,8 @@ const int FRAME_height = 1080; // ƒtƒŒ[ƒ€‚Ìc‚Ì’·‚³
 extern void init_me(cv::VideoCapture* cap, std::vector<char>* embed, cv::Size* size, std::ofstream* ofs, cv::VideoWriter* writer, std::string read_file, std::string write_file, int num_embedframe);
 extern std::vector<char> set_embeddata(const std::string filename);
 extern cv::VideoCapture capture_open(const std::string read_file);
-extern cv::VideoWriter mp4_writer_open(const std::string write_file, cv::VideoCapture cap);
-
-//extern void motion_detect(const cv::Mat& p_luminance, const cv::Mat& c_luminance, std::vector<cv::Mat>& check_lumi_array, int cframe, int c_num_embedframe); // “®‚«ŒŸo‚µ‚Ächeck_lumi_array‚É“ü‚ê‚é
-extern void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_luminance, std::vector<cv::Mat>& check_array, std::vector<char> embed, int cframe, int num_embedframe, int delta); // 
+extern cv::VideoWriter writer_open(const std::string write_file, cv::VideoCapture cap);
+extern void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_luminance, std::vector<char> embed, int cframe, int num_embedframe, int delta); // 
 extern void operate_lumi(std::vector<float> &lumi, float average, float variance, int delta);
 
 
@@ -79,4 +77,3 @@ extern void change_filename(std::string& read_file, std::string& write_file, int
 //void idct_trans(std::vector<std::vector<double>>& dct_lumi, std::vector<std::vector<double>>& dst_Flumi);
 
 #endif
-

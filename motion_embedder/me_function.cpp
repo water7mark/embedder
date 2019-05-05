@@ -3,14 +3,13 @@
 int delta_thisfile = 0;
 float average_thisfile = 0;
 
-//static std::vector<std::vector<double>> dct_pdelta;    // できれば，周波数変換したものを事前に持っておくといいが．
-//static std::vector<std::vector<double>> dct_mdelta;
+
 static double cosine_table[block_height][block_width];  // DCT変換用のコサインテーブル
 
 void init_me(cv::VideoCapture* cap, std::vector<char>* embed, cv::Size* size, std::ofstream* ofs, cv::VideoWriter* writer, std::string read_file, std::string write_file, int num_embedframe) {
 		*embed = set_embeddata(embed_file);    
 		*cap = capture_open(read_file);        
-		*writer = mp4_writer_open(write_file + ".avi", *cap);  // mp4なのでデータ量が小さいため分割の必要はない．．
+		*writer = mp4_writer_open(write_file + ".mp4", *cap);  // mp4なのでデータ量が小さいため分割の必要はない．．
 		size->width = cap->get(CV_CAP_PROP_FRAME_WIDTH);
 		size->height = cap->get(CV_CAP_PROP_FRAME_HEIGHT);
 
@@ -60,17 +59,15 @@ cv::VideoCapture capture_open(const std::string read_file) {
 	return cap;
 }
 
-cv::VideoWriter mp4_writer_open(const std::string write_file, cv::VideoCapture cap) {
+cv::VideoWriter writer_open(const std::string write_file, cv::VideoCapture cap) {
 	cv::VideoWriter writer;
 	cv::Size size(cap.get(CV_CAP_PROP_FRAME_WIDTH), cap.get(CV_CAP_PROP_FRAME_HEIGHT));
-	writer.open(write_file, CV_FOURCC('D', 'I', 'V','3'), cap.get(CV_CAP_PROP_FPS), size);
-	if (!writer.isOpened()) {
-		std::cout << "can't write video file.\n";
-		getchar();
+	writer.open(write_file, CV_FOURCC('D', 'I', 'B', ' '), cap.get(CV_CAP_PROP_FPS), size);
+	if (!writer.isOpened())
 		exit(5);
-	}
 	return writer;
 }
+
 
 cv::Mat filter(cv::Mat luminance) {                           // ブロック内の輝度値をならす(輝度値の平均化)
 	cv::Mat dst_luminance(luminance.size(), CV_32F);
@@ -282,6 +279,7 @@ void operate_lumi(std::vector<float> &lumi, float average, float variance, int d
 				temp_lumi[j] += 1 / num_low_ave;
 			}
 		}
+
 
 		temp_lumi[index_min]++;
 		for (int j = 0; j < (end(temp_lumi) - begin(temp_lumi)); j++) {
