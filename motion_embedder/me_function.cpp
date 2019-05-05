@@ -244,7 +244,7 @@ void operate_lumi(std::vector<float> &lumi, float average, float variance, int d
 		temp_lumi[i] = lumi[i];
 	}
 
-	for (int limit_time  = 0; limit_time < 30; limit_time++) {  // なぜ30？
+	for (int limit_time  = 0; limit_time < 3; limit_time++) {  // なぜ30？
 		// 平均から最も遠い要素のインデックスを求める
 		std::vector<double>::iterator itr_max = std::max_element(temp_lumi.begin(), temp_lumi.end());
 		std::vector<double>::iterator itr_min = std::min_element(temp_lumi.begin(), temp_lumi.end());

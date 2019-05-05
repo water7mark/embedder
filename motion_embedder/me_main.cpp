@@ -43,6 +43,21 @@ int main(int argc, char *argv[])
 			//timer startf
 			meter.start();
 
+			//300f–ˆ‚É•Ê‚Ì“®‰æ‘œ‚Æ‚µ‚Ä•Û‘¶
+			if (cap.get(CV_CAP_PROP_POS_FRAMES) == 300) {
+				writer.release();
+				if (read_file.find("avi") != std::string::npos) {
+					writer = writer_open(write_file + "_2.avi", cap);
+				}
+
+			}
+			if (cap.get(CV_CAP_PROP_POS_FRAMES) == 600) {
+				writer.release();
+				if (read_file.find("avi") != std::string::npos) {
+					writer = writer_open(write_file + "_3.avi", cap);
+				}
+			}
+
 			//preprocessing
 			for (i = 0; i < num_embedframe; i++) {
 				cap >> frame_BGR;
