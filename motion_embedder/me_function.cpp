@@ -9,12 +9,11 @@ static double cosine_table[block_height][block_width];  // DCT変換用のコサインテ
 void init_me(cv::VideoCapture* cap, std::vector<char>* embed, cv::Size* size, std::ofstream* ofs, cv::VideoWriter* writer, std::string read_file, std::string write_file, int num_embedframe) {
 		*embed = set_embeddata(embed_file);    
 		*cap = capture_open(read_file);        
-		*writer = mp4_writer_open(write_file + ".mp4", *cap);  // mp4なのでデータ量が小さいため分割の必要はない．．
+	//	*writer = mp4_writer_open(write_file + ".mp4", *cap);  // mp4なのでデータ量が小さいため分割の必要はない．．
+		*writer = writer_open(write_file + ".avi", *cap);
 		size->width = cap->get(CV_CAP_PROP_FRAME_WIDTH);
 		size->height = cap->get(CV_CAP_PROP_FRAME_HEIGHT);
 
-//		set_ctable();  // set cosine_table 
-		
 }
 
 void set_ctable() {    //DCT変換で使うテーブルを初期設定
@@ -132,7 +131,7 @@ float median(std::vector<float> v) {     // 中央値を返す
 //	}
 //}
 
-void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_luminance, std::vector<cv::Mat>& check_array, std::vector<char> embed, int cframe,int num_embedframe, int delta) {
+void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_luminance,std::vector<char> embed, int cframe,int num_embedframe, int delta) {
 	std::vector<cv::Mat> means;  //ブロック単位の平均輝度値を保持
 	std::vector<cv::Mat> deviations;  //ブロック単位の平均値からの偏差を保持
 	cv::Mat m_means = cv::Mat::zeros(1920, 1080, CV_32F);  //mフレーム間での「ブロック単位の平均値」の平均値を保持
@@ -152,22 +151,6 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 		m_means += means[i] / num_embedframe;
 	}
 
-	// 2018_11_21 add
-	//cv::Mat dev_means;
-	//std::vector<cv::Mat> temp_sd(num_embedframe);
-	//std::vector<cv::Mat> s_deviations(num_embedframe);  // 各ブロックごとの平均輝度値の偏差  // 各ブロックごとの平均輝度値の標準偏差
-	//// ↓ブロック単位の平均値の偏差を格納する(mフレームでどれだけブロックの輝度が変化したかを示す)mフレーム間での「ブロック単位の平均値の平均値」- ブロック単位の平均値
-	//cv::pow((means[0] - m_means), 2, temp_sd[0]);
-	//cv::sqrt((temp_sd[0] / num_embedframe), s_deviations[0]);  
-	//cv::Mat standard_deviation = s_deviations[0].clone();
-	//for (int i = 1; i < num_embedframe; i++) {
-	//	cv::pow((means[i] - m_means), 2, temp_sd[i]);
-	//	cv::sqrt((temp_sd[i] / num_embedframe), s_deviations[i]);
-	//	standard_deviation += s_deviations[i];
-	//}
-
-
-	// 分散を求めたいとき
 	//mフレーム間での「ブロック単位の平均値」の平均値を保持
 	std::vector<cv::Mat> t_variance(num_embedframe);
 	cv::pow((means[0] - m_means), 2, t_variance[0]);
@@ -257,12 +240,11 @@ void operate_lumi(std::vector<float> &lumi, float average, float variance, int d
 
 	average_thisfile = average;
 
-
 	for (int i = 0; i < end(lumi) - begin(lumi); i++) {
 		temp_lumi[i] = lumi[i];
 	}
 
-	for (int limit_time  = 0; limit_time < 30; limit_time++) {
+	for (int limit_time  = 0; limit_time < 30; limit_time++) {  // なぜ30？
 		// 平均から最も遠い要素のインデックスを求める
 		std::vector<double>::iterator itr_max = std::max_element(temp_lumi.begin(), temp_lumi.end());
 		std::vector<double>::iterator itr_min = std::min_element(temp_lumi.begin(), temp_lumi.end());
@@ -302,6 +284,3 @@ void operate_lumi(std::vector<float> &lumi, float average, float variance, int d
 		lumi[i] = temp_lumi[i];  
 	}
 }
-
-
-//k
