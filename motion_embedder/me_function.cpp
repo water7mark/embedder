@@ -230,13 +230,13 @@ bool is_more_than(float i) {
 	return ((i > average_thisfile) == 1);
 }
 
-void operate_lumi(std::vector<float> &lumi, float average, float variance, int delta) {  // 平均を維持しつつ、標準偏差を分散未満にする関数
+void operate_lumi(std::vector<float> &lumi, int average, int variance, int delta) {  // 平均を維持しつつ、標準偏差を分散未満にする関数
 	// average, varianceはlumiで与えられる輝度値の平均と分散であり、deltaは埋め込み強度
 	size_t index_max, index_min; // 最大、最小の要素の添え字
 	size_t num_low_ave = 0;  // 平均よりも低い個数
 	size_t num_high_ave = 0; //平均よりも高い個数
-	float now_variance;
-	std::vector<double> temp_lumi(20);
+	long long int now_variance;  
+	std::vector<int> temp_lumi(20);
 
 	average_thisfile = average;
 
@@ -244,37 +244,24 @@ void operate_lumi(std::vector<float> &lumi, float average, float variance, int d
 		temp_lumi[i] = lumi[i];
 	}
 
-	for (int limit_time  = 0; limit_time < 3; limit_time++) {  // なぜ30？
+	for (int limit_time  = 0; limit_time < 30; limit_time++) {  // なぜ30？
 		// 平均から最も遠い要素のインデックスを求める
-		std::vector<double>::iterator itr_max = std::max_element(temp_lumi.begin(), temp_lumi.end());
-		std::vector<double>::iterator itr_min = std::min_element(temp_lumi.begin(), temp_lumi.end());
+		std::vector<int>::iterator itr_max = std::max_element(temp_lumi.begin(), temp_lumi.end());
+		std::vector<int>::iterator itr_min = std::min_element(temp_lumi.begin(), temp_lumi.end());
 		index_max = std::distance(temp_lumi.begin(), itr_max);
 		index_min = std::distance(temp_lumi.begin(), itr_min);
 			   
-		num_low_ave = std::count_if(temp_lumi.begin(), temp_lumi.end(), is_less_than);
-		num_high_ave = std::count_if(temp_lumi.begin(), temp_lumi.end(), is_more_than);
+		//num_low_ave = std::count_if(temp_lumi.begin(), temp_lumi.end(), is_less_than);
+		//num_high_ave = std::count_if(temp_lumi.begin(), temp_lumi.end(), is_more_than);
 		now_variance = 0;
 
 		temp_lumi[index_max]--;
-		for (int j = 0; j < (end(temp_lumi) - begin(temp_lumi)); j++) {
-			if (temp_lumi[j] < average) {
-				temp_lumi[j] += 1 / num_low_ave;
-			}
-		}
-
-
 		temp_lumi[index_min]++;
-		for (int j = 0; j < (end(temp_lumi) - begin(temp_lumi)); j++) {
-			if (temp_lumi[j] > average) {
-				temp_lumi[j] -= 1 / num_high_ave;
-			}
-		}
 
 		for (int k = 0; k < (end(temp_lumi) - begin(temp_lumi)); k++) {
 			now_variance += (temp_lumi[k] - average) * (temp_lumi[k] - average);
 		}
 		
-
 		if ((now_variance <= (variance * (10 - delta) / 10)) || (now_variance <= (variance - delta * delta))) { 
 			break;
 		}
