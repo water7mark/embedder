@@ -31,7 +31,7 @@
 using comp = std::complex<double>;
 
 
-#define PROJECT_LOOP 1
+#define PROJECT_LOOP 2
 
 const std::string log_file("C:/Users/youhei/Desktop/research_all/research_data/log_all.txt");// いつもと違うので注意
 const std::string embed_file("C:/Users/youhei/Desktop/research_all/research_data/m1_try00_embednum16x9.txt");  // ！！要確認！！
@@ -39,7 +39,7 @@ const std::string cosine_file("C:/Users/youhei/Desktop/research_all/research_dat
 
 //parameter
 const std::string basis_read_file("C:/IHC_videos/xxx");
-const std::string basis_write_file("C:/Users/youhei/Desktop/research_all/research_data/mp4_embedded_videos/ver7/ver7_2/xxx_test");
+const std::string basis_write_file("C:/Users/youhei/Desktop/research_all/research_data/mp4_embedded_videos/ver7/ver7_3/xxx_test");
 const int num_embedframe = 20; //1回当たりの処理で埋め込むフレーム数(偶数)
 const double delta = 1; //埋め込み強度
 

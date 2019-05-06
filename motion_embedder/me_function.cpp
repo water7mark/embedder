@@ -10,10 +10,9 @@ void init_me(cv::VideoCapture* cap, std::vector<char>* embed, cv::Size* size, st
 		*embed = set_embeddata(embed_file);    
 		*cap = capture_open(read_file);        
 	//	*writer = mp4_writer_open(write_file + ".mp4", *cap);  // mp4なのでデータ量が小さいため分割の必要はない．．
-		*writer = writer_open(write_file + ".avi", *cap);
+		*writer = writer_open(write_file + "_1.avi", *cap);
 		size->width = cap->get(CV_CAP_PROP_FRAME_WIDTH);
 		size->height = cap->get(CV_CAP_PROP_FRAME_HEIGHT);
-
 }
 
 void set_ctable() {    //DCT変換で使うテーブルを初期設定
@@ -244,7 +243,7 @@ void operate_lumi(std::vector<float> &lumi, float average, float variance, int d
 		temp_lumi[i] = lumi[i];
 	}
 
-	for (int limit_time  = 0; limit_time < 30; limit_time++) {  // なぜ30？
+	for (int limit_time  = 0; limit_time < 130000; limit_time++) {  // なぜ30？
 		// 平均から最も遠い要素のインデックスを求める
 		std::vector<int>::iterator itr_max = std::max_element(temp_lumi.begin(), temp_lumi.end());
 		std::vector<int>::iterator itr_min = std::min_element(temp_lumi.begin(), temp_lumi.end());
@@ -261,9 +260,18 @@ void operate_lumi(std::vector<float> &lumi, float average, float variance, int d
 		for (int k = 0; k < (end(temp_lumi) - begin(temp_lumi)); k++) {
 			now_variance += (temp_lumi[k] - average) * (temp_lumi[k] - average);
 		}
+
+		now_variance /=  num_embedframe;
 		
-		if ((now_variance <= (variance * (10 - delta) / 10)) || (now_variance <= (variance - delta * delta))) { 
+		if ((now_variance <= (variance * (10 - delta) / 10)) || (now_variance <= (variance - delta * delta))) {  
 			break;
+		}
+		//if (now_variance <= delta * delta) {
+		//	break;
+		//}
+
+		if (limit_time == 129999) {
+			std::cout << "発生" << std::endl;
 		}
 	}
 
