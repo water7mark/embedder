@@ -230,12 +230,12 @@ bool is_more_than(float i) {
 	return ((i > average_thisfile) == 1);
 }
 
-void operate_lumi(std::vector<float> &lumi, int average, int variance, int delta) {  // 平均を維持しつつ、標準偏差を分散未満にする関数
+void operate_lumi(std::vector<float> &lumi, float average, float variance, int delta) {  // 平均を維持しつつ、標準偏差を分散未満にする関数
 	// average, varianceはlumiで与えられる輝度値の平均と分散であり、deltaは埋め込み強度
 	size_t index_max, index_min; // 最大、最小の要素の添え字
 	size_t num_low_ave = 0;  // 平均よりも低い個数
 	size_t num_high_ave = 0; //平均よりも高い個数
-	long long int now_variance;  
+	float now_variance;  
 	std::vector<int> temp_lumi(20);
 
 	average_thisfile = average;

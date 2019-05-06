@@ -39,7 +39,7 @@ const std::string cosine_file("C:/Users/youhei/Desktop/research_all/research_dat
 
 //parameter
 const std::string basis_read_file("C:/IHC_videos/xxx");
-const std::string basis_write_file("C:/Users/youhei/Desktop/research_all/research_data/mp4_embedded_videos/ver7/ver7_2/xxx_test.avi");
+const std::string basis_write_file("C:/Users/youhei/Desktop/research_all/research_data/mp4_embedded_videos/ver7/ver7_2/xxx_test");
 const int num_embedframe = 20; //1‰ñ“–‚½‚è‚Ìˆ—‚Å–„‚ß‚ŞƒtƒŒ[ƒ€”(‹ô”)
 const double delta = 1; //–„‚ß‚İ‹­“x
 
@@ -59,7 +59,7 @@ extern std::vector<char> set_embeddata(const std::string filename);
 extern cv::VideoCapture capture_open(const std::string read_file);
 extern cv::VideoWriter writer_open(const std::string write_file, cv::VideoCapture cap);
 extern void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_luminance, std::vector<char> embed, int cframe, int num_embedframe, int delta); 
-extern void operate_lumi(std::vector<float> &lumi, int average, int variance, int delta);
+extern void operate_lumi(std::vector<float> &lumi, float average, float variance, int delta);
 
 
 // common
