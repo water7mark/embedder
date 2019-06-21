@@ -173,7 +173,10 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 		for (y = 0; y < FRAME_HEIGHT; y++) {
 			v_temp = variance.at<float>(y, x);
 			// ブロック内は同じ透かしビットを埋め込む．同一ブロック群内の異なるブロック内の画素が，同じ値をもつことはない
-			float num = (embed[(x / block_width) % BG_width + ((y / block_height) % BG_height)*BG_width] == '0') ? 0 : 1;
+			//float num = (embed[(x / block_width) % BG_width + ((y / block_height) % BG_height)*BG_width] == '0') ? 0 : 1;
+
+			int num = (embed[interleave_file[(x / block_width) % BG_width + ((y / block_height) % BG_height)*BG_width]] == '0') ? 0 : 1;
+			
 
 			if (num == 0) {  // 透かしビットが0の時
 				for (int i = 0; i < num_embedframe; i++) {
@@ -263,7 +266,7 @@ void operate_lumi(std::vector<float> &lumi, float average, float variance, int d
 
 		now_variance /=  num_embedframe;
 		
-		if ((now_variance <= (variance * (10 - delta) / 10)) || (now_variance <= (variance - delta * delta))) {  
+		if ((now_variance <= (variance * (10 - delta) / 10)) || (now_variance <= (variance - delta * delta))) {    // 変更するならここか
 			break;
 		}
 		//if (now_variance <= delta * delta) {

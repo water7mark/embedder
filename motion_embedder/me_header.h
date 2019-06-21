@@ -31,17 +31,18 @@
 using comp = std::complex<double>;
 
 
-#define PROJECT_LOOP 2
+#define PROJECT_LOOP 5
 
-const std::string log_file("C:/Users/youhei/Desktop/research_all/research_data/log_all.txt");// いつもと違うので注意
-const std::string embed_file("C:/Users/youhei/Desktop/research_all/research_data/m1_try00_embednum16x9.txt");  // ！！要確認！！
+const std::string log_file("C:/Users/youhei/Desktop/research_all/research_data/log_all.txt");
+const std::string embed_file("C:/Users/youhei/Desktop/research_all/research_data/m1_try00_embednum16x9.txt");    //
+const std::string interleave_file("C:/Users/youhei/Desktop/research_all/research_data/m2_embed_interleave.txt");   // 
 const std::string cosine_file("C:/Users/youhei/Desktop/research_all/research_data/cosine_table.txt");
 
 //parameter
 const std::string basis_read_file("C:/IHC_videos/xxx");
-const std::string basis_write_file("C:/Users/youhei/Desktop/research_all/research_data/mp4_embedded_videos/ver7/ver7_3/xxx_test");
+const std::string basis_write_file("C:/Users/youhei/Desktop/research_all/research_data/mp4_embedded_videos/ver1/ver1_5/xxx_ver1_5");
 const int num_embedframe = 20; //1回当たりの処理で埋め込むフレーム数(偶数)
-const double delta = 1; //埋め込み強度
+const double delta = 5; //埋め込み強度
 
 const int BG_width = 16;  // ブロック群の横の長さ
 const int BG_height = 9;  // ブロック群の縦の長さ

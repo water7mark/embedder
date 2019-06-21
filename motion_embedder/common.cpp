@@ -29,7 +29,9 @@ void log_write(std::string read_file, std::string write_file) {
 	error = localtime_s(&now, &t);
 
 	strftime(date, sizeof(date), "%Y/%m/%d %a %H:%M:%S\n", &now);
-	ofs << date << "embedder::" << "read_file・" << read_file << "\n" << "write_file・" << write_file << "\n" << embed_file << "\n" << std::endl;
+
+	// motion_embedderの記載は2019/05/24から
+	ofs << date << "motion_embedder::" << "read_file・" << read_file << "\n" << "write_file・" << write_file << "\n" << embed_file << "\n" << std::endl;
 	ofs << "----------------------------------------------\n";
 	std::cout << log_file << "に書き込みました。" << std::endl;
 
@@ -87,14 +89,29 @@ void change_filename(std::string& read_file,  std::string& write_file, int loop_
 	const std::string mp4_read_array[5] = { "Basketball.avi", "Library.avi","Lego.avi","Walk2.avi", "Walk1.avi" };
 	const std::string read_array[5] = { "basket" ,"library" ,"lego", "walk2" , "walk1"};
 	int change_point = 0;
+	int check_num = 0;
 
 	// read_fileの操作(loop_countに応じてファイルの名前の動画のタイトル部分を変更)
 	change_point = (int)read_file.find("xxx");
 	read_file.replace(change_point, 3, mp4_read_array[loop_count - 1]);
 
+	check_num = (int)read_file.rfind("ver");
+	if (read_file[check_num + 5] - '0' != delta) {
+		std::cout << "error: miss type:: read_file is wrong" << read_file << std::endl;
+		getchar();
+		exit(0);
+	}
+
 	// write_fileの操作
 	change_point = (int)write_file.find("xxx");
 	write_file.replace(change_point, 3, read_array[loop_count - 1]);
+
+	check_num = (int)write_file.rfind("ver");
+	if (write_file[check_num + 5] - '0' != delta) {
+		std::cout << "error: miss type:: write_file is wrong" << write_file << std::endl;
+		getchar();
+		exit(0);
+	}
 
 	// コンソール出力
 	std::cout << read_file  << std::endl;
