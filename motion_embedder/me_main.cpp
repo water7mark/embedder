@@ -19,6 +19,7 @@ int main(int argc, char *argv[])
 		cv::VideoCapture cap;
 		cv::VideoWriter writer;
 		std::vector<char> embed;
+		std::vector<int> inter_vec;
 		std::ofstream ofs;
 		cv::TickMeter meter;
 		int framenum;
@@ -26,7 +27,7 @@ int main(int argc, char *argv[])
 		
 
 		//初期化
-		init_me(&cap, &embed, &size, &ofs, &writer, read_file, write_file, num_embedframe);
+		init_me(&cap, &embed, &size, &ofs, &writer, read_file, write_file, num_embedframe, inter_vec);
 		int total_frames = cap.get(CV_CAP_PROP_FRAME_COUNT) - 1;  // 0フレーム分をカット
 
 		do {
@@ -76,7 +77,7 @@ int main(int argc, char *argv[])
 			}
 
 			//埋め込み処理(num_embeddframe分だけ処理を行う)
-			motion_embedder(luminance, dst_luminance, embed, cap.get(CV_CAP_PROP_POS_FRAMES), num_embedframe, delta);
+			motion_embedder(luminance, dst_luminance, embed, cap.get(CV_CAP_PROP_POS_FRAMES), num_embedframe, delta, inter_vec);
 
 			//timer end
 			meter.stop();

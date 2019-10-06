@@ -3,16 +3,16 @@
 int delta_thisfile = 0;
 float average_thisfile = 0;
 
-
 static double cosine_table[block_height][block_width];  // DCT変換用のコサインテーブル
 
-void init_me(cv::VideoCapture* cap, std::vector<char>* embed, cv::Size* size, std::ofstream* ofs, cv::VideoWriter* writer, std::string read_file, std::string write_file, int num_embedframe) {
-		*embed = set_embeddata(embed_file);    
-		*cap = capture_open(read_file);        
+void init_me(cv::VideoCapture* cap, std::vector<char>* embed, cv::Size* size, std::ofstream* ofs, cv::VideoWriter* writer, std::string read_file, std::string write_file, int num_embedframe, std::vector<int>& inter_vec) {
+	*embed = set_embeddata(embed_file);    
+	set_interleave(interleave_file, inter_vec);
+	*cap = capture_open(read_file);        
 	//	*writer = mp4_writer_open(write_file + ".mp4", *cap);  // mp4なのでデータ量が小さいため分割の必要はない．．
-		*writer = writer_open(write_file + "_1.avi", *cap);
-		size->width = cap->get(CV_CAP_PROP_FRAME_WIDTH);
-		size->height = cap->get(CV_CAP_PROP_FRAME_HEIGHT);
+	*writer = writer_open(write_file + "_1.avi", *cap);
+	size->width = cap->get(CV_CAP_PROP_FRAME_WIDTH);
+	size->height = cap->get(CV_CAP_PROP_FRAME_HEIGHT);
 }
 
 void set_ctable() {    //DCT変換で使うテーブルを初期設定
@@ -46,6 +46,7 @@ std::vector<char> set_embeddata(const std::string filename) {
 
 	return embed;
 }
+
 
 cv::VideoCapture capture_open(const std::string read_file) {
 	cv::VideoCapture cap(read_file);
@@ -130,7 +131,7 @@ float median(std::vector<float> v) {     // 中央値を返す
 //	}
 //}
 
-void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_luminance,std::vector<char> embed, int cframe,int num_embedframe, int delta) {
+void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_luminance,std::vector<char> embed, int cframe,int num_embedframe, int delta, std::vector<int>& inter_vec) {
 	std::vector<cv::Mat> means;  //ブロック単位の平均輝度値を保持
 	std::vector<cv::Mat> deviations;  //ブロック単位の平均値からの偏差を保持
 	cv::Mat m_means = cv::Mat::zeros(1920, 1080, CV_32F);  //mフレーム間での「ブロック単位の平均値」の平均値を保持
@@ -145,7 +146,7 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 	}
 
 	//mフレームで平均をとる
-	m_means = means[0].clone() / num_embedframe;   // meansの型を自動的に決めたかったからこの文だけforから外した?
+	m_means = means[0].clone() / num_embedframe;  
 	for (int i = 1; i < num_embedframe; i++) {
 		m_means += means[i] / num_embedframe;
 	}
@@ -159,61 +160,12 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 		variance += t_variance[i];
 	}
 	variance /= num_embedframe;
-	
 
-	//埋め込み処理
-	cv::Mat p_cnt = cv::Mat::zeros(cv::Size(1920,1080), CV_8UC1), m_cnt = cv::Mat::zeros(cv::Size(1920, 1080), CV_8UC1);
-	cv::Mat p_cnt0 = cv::Mat::zeros(cv::Size(1920, 1080), CV_8UC1), m_cnt0 = cv::Mat::zeros(cv::Size(1920, 1080), CV_8UC1);
-	
-	int v_temp;
-	float now_point;   // 現在の座標が属しているDCTブロックの平均輝度値
-	std::vector<float> lumi(20,0);
 
-	for (x = 0; x < FRAME_WIDTH; x++) {
-		for (y = 0; y < FRAME_HEIGHT; y++) {
-			v_temp = variance.at<float>(y, x);
-			// ブロック内は同じ透かしビットを埋め込む．同一ブロック群内の異なるブロック内の画素が，同じ値をもつことはない
-			//float num = (embed[(x / block_width) % BG_width + ((y / block_height) % BG_height)*BG_width] == '0') ? 0 : 1;
 
-			int num = (embed[interleave_file[(x / block_width) % BG_width + ((y / block_height) % BG_height)*BG_width]] == '0') ? 0 : 1;
-			
 
-			if (num == 0) {  // 透かしビットが0の時
-				for (int i = 0; i < num_embedframe; i++) {
-					lumi[i] = means[i].at<float>(y, x);
-				}
 
-				for (int t_delta = delta; t_delta >= 1; t_delta--) {
-					if (v_temp >= t_delta * t_delta) {
-						operate_lumi(lumi, m_means.at<float>(y,x), v_temp, t_delta);
-					}
-				}
-
-				for (int i = 0; i < num_embedframe; i++) {
-					means[i].at<float>(y, x) = lumi[i];
-					lumi[i] = 0;
-				}
-			}
-			else {    // 透かしビットが1の時
-				for (int i = 0; i < num_embedframe; i++) {
-					now_point = means[i].at<float>(y, x);
-
-					//近似的に中央値よりも高いかどうかを判定  (平均値と比較しているようだが，これが実質中央値との比較になるのか？)
-					if ((now_point >= m_means.at<float>(y, x) && p_cnt.at<unsigned char>(y, x) != num_embedframe / 2) || m_cnt.at<unsigned char>(y, x) == num_embedframe / 2) {
-						now_point += delta;  //δ加えたフレームの数
-						p_cnt.at<unsigned char>(y, x)++;
-					}
-					else {
-						now_point -= delta;  //-δ加えたフレームの数
-						m_cnt.at<unsigned char>(y, x)++;
-					}
-
-					means[i].at<float>(y, x) = now_point;
-				}
-			}
-
-		}
-	}
+	/// 何か処理
 
 	//埋め込み後フレームを返す
 	for (int i = 0; i < num_embedframe; i++) {
@@ -232,53 +184,21 @@ bool is_more_than(float i) {
 	return ((i > average_thisfile) == 1);
 }
 
-void operate_lumi(std::vector<float> &lumi, float average, float variance, int delta) {  // 平均を維持しつつ、標準偏差を分散未満にする関数
-	// average, varianceはlumiで与えられる輝度値の平均と分散であり、deltaは埋め込み強度
-	size_t index_max, index_min; // 最大、最小の要素の添え字
-	size_t num_low_ave = 0;  // 平均よりも低い個数
-	size_t num_high_ave = 0; //平均よりも高い個数
-	float now_variance;  
-	std::vector<int> temp_lumi(20);
 
-	average_thisfile = average;
+void motion_capture(cv::Mat cur_lumi, cv::Mat pre_lumi) {   // 2枚のフレームを取得して、動きのある部分を返す
+	
 
-	for (int i = 0; i < end(lumi) - begin(lumi); i++) {
-		temp_lumi[i] = lumi[i];
-	}
 
-	for (int limit_time  = 0; limit_time < 130000; limit_time++) {  // なぜ30？
-		// 平均から最も遠い要素のインデックスを求める
-		std::vector<int>::iterator itr_max = std::max_element(temp_lumi.begin(), temp_lumi.end());
-		std::vector<int>::iterator itr_min = std::min_element(temp_lumi.begin(), temp_lumi.end());
-		index_max = std::distance(temp_lumi.begin(), itr_max);
-		index_min = std::distance(temp_lumi.begin(), itr_min);
-			   
-		//num_low_ave = std::count_if(temp_lumi.begin(), temp_lumi.end(), is_less_than);
-		//num_high_ave = std::count_if(temp_lumi.begin(), temp_lumi.end(), is_more_than);
-		now_variance = 0;
+	for (int y = 0; y < FRAME_HEIGHT; y++) {
+		for (int x = 0; x < FRAME_WIDTH; x++) {
+			if (pre_lumi.at<unsigned char>(y, x) == 255) {        // 白色なら
+				if (cur_lumi.at<unsigned char>(y, x) == 255) {
 
-		temp_lumi[index_max]--;
-		temp_lumi[index_min]++;
-
-		for (int k = 0; k < (end(temp_lumi) - begin(temp_lumi)); k++) {
-			now_variance += (temp_lumi[k] - average) * (temp_lumi[k] - average);
-		}
-
-		now_variance /=  num_embedframe;
-		
-		if ((now_variance <= (variance * (10 - delta) / 10)) || (now_variance <= (variance - delta * delta))) {    // 変更するならここか
-			break;
-		}
-		//if (now_variance <= delta * delta) {
-		//	break;
-		//}
-
-		if (limit_time == 129999) {
-			std::cout << "発生" << std::endl;
+				}
+			}
 		}
 	}
+	
 
-	for (int i = 0; i < end(lumi) - begin(lumi); i++) {
-		lumi[i] = temp_lumi[i];  
-	}
+
 }
