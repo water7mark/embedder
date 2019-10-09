@@ -2,6 +2,12 @@
 
 int main(int argc, char *argv[])
 {
+	int test = 1;
+
+	for (int i = 0; i < test + 5; i++) {
+		
+	}
+
 	for (int now_loop = 1; now_loop <= PROJECT_LOOP; now_loop++) {
 		// read_file, write_fileをループごとに適切な名前に変更する
 		std::string read_file = basis_read_file;
