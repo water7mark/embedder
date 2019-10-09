@@ -103,34 +103,6 @@ float median(std::vector<float> v) {     // 中央値を返す
 	}
 }
 
-//void motion_detect(const cv::Mat& p_luminance,const cv::Mat& c_luminance, std::vector<cv::Mat>& check_lumi_array, int cframe, int c_num_embedframe) {
-//	// 連続する2フレームの輝度値から
-//
-//	// 要素がcv::Mat型の配列を指すポインタを受け取ってそれをもとに動き検出を行う
-//	cv::Size size(FRAME_WIDTH, FRAME_HEIGHT);
-//	cv::Mat lumi_diff(size, CV_8UC3);
-//
-//	for (int j = 0; j < FRAME_HEIGHT; j += block_height) {
-//		for (int i = 0; i < FRAME_WIDTH; i += block_width) {
-//			// ↓DAAD変換するとなぜかすべての画素の輝度値が大幅に上がるので，全ての画素の中で最も輝度値の変化が小さいものの変化量を足し合わせておきたい
-//
-//			for (int k = 0; k < block_height; k++) {
-//				lumi_diff = std::abs(p_luminance.at<unsigned char>(j, i) - c_luminance.at<unsigned char>(j, i));  // 前後のフレームの輝度差を取る
-//
-//			}
-//			if ((lumi_diff >= THRESHOLD_DIFF_PIXEL) && (lumi_diff <= 100)) {
-//				check_lumi_array[c_num_embedframe].at<unsigned char>(j, i) = 1 + 4 * lumi_diff / 100;
-//			}
-//			else if (lumi_diff > 100) {
-//				check_lumi_array[c_num_embedframe].at<unsigned char>(j, i) = 5;
-//			}
-//			else {
-//				check_lumi_array[c_num_embedframe].at<unsigned char>(j, i) = 1;
-//			}
-//		}
-//	}
-//}
-
 void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_luminance,std::vector<char> embed, int cframe,int num_embedframe, int delta, std::vector<int>& inter_vec) {
 	std::vector<cv::Mat> means;  //ブロック単位の平均輝度値を保持
 	std::vector<cv::Mat> deviations;  //ブロック単位の平均値からの偏差を保持
