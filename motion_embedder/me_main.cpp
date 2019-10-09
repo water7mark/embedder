@@ -5,7 +5,7 @@ int main(int argc, char *argv[])
 	int test = 1;
 
 	for (int i = 0; i < test + 5; i++) {
-		
+		i = 4;
 	}
 
 	for (int now_loop = 1; now_loop <= PROJECT_LOOP; now_loop++) {
