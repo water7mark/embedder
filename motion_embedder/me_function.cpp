@@ -13,7 +13,6 @@ void init_me(cv::VideoCapture* cap, std::vector<char>* embed, cv::Size* size, st
 		*writer = writer_open(write_file + ".avi", *cap);
 		size->width = cap->get(CV_CAP_PROP_FRAME_WIDTH);
 		size->height = cap->get(CV_CAP_PROP_FRAME_HEIGHT);
-
 }
 
 void set_ctable() {    //DCT変換で使うテーブルを初期設定
@@ -146,12 +145,14 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 	}
 
 	//mフレームで平均をとる
+	//mフレーム間での「ブロック単位の平均値」の平均値を保持
 	m_means = means[0].clone() / num_embedframe;   // meansの型を自動的に決めたかったからこの文だけforから外した?
 	for (int i = 1; i < num_embedframe; i++) {
 		m_means += means[i] / num_embedframe;
 	}
 
-	//mフレーム間での「ブロック単位の平均値」の平均値を保持
+	
+	// 分散を取得
 	std::vector<cv::Mat> t_variance(num_embedframe);
 	cv::pow((means[0] - m_means), 2, t_variance[0]);
 	cv::Mat variance = t_variance[0].clone();
@@ -173,6 +174,7 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 	for (x = 0; x < FRAME_WIDTH; x++) {
 		for (y = 0; y < FRAME_HEIGHT; y++) {
 			v_temp = variance.at<float>(y, x);
+
 			// ブロック内は同じ透かしビットを埋め込む．同一ブロック群内の異なるブロック内の画素が，同じ値をもつことはない
 			float num = (embed[(x / block_width) % BG_width + ((y / block_height) % BG_height)*BG_width] == '0') ? 0 : 1;
 
@@ -182,7 +184,8 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 				}
 
 				for (int t_delta = delta; t_delta >= 1; t_delta--) {
-					if (v_temp >= t_delta * t_delta) {
+					if (v_temp >= t_delta * t_delta) {                   // これでいいのか？?
+
 						operate_lumi(lumi, m_means.at<float>(y,x), v_temp, t_delta);
 					}
 				}
