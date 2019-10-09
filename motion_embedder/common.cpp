@@ -29,9 +29,7 @@ void log_write(std::string read_file, std::string write_file) {
 	error = localtime_s(&now, &t);
 
 	strftime(date, sizeof(date), "%Y/%m/%d %a %H:%M:%S\n", &now);
-
-	// motion_embedderの記載は2019/05/24から
-	ofs << date << "motion_embedder::" << "read_file・" << read_file << "\n" << "write_file・" << write_file << "\n" << embed_file << "\n" << std::endl;
+	ofs << date << "embedder::" << "read_file・" << read_file << "\n" << "write_file・" << write_file << "\n" << embed_file << "\n" << std::endl;
 	ofs << "----------------------------------------------\n";
 	std::cout << log_file << "に書き込みました。" << std::endl;
 
@@ -40,8 +38,8 @@ void log_write(std::string read_file, std::string write_file) {
 
 void str_checker(std::string read_file, std::string write_file) {
 	// 本当は，連想配列を使うべきでは?   // 同じ部分は関数化すべき
-	std::vector<std::string> r_label = { "Lego", "Walk1", "Walk2","Basket","Library"};
-	std::vector<std::string> w_label = { "lego", "walk1", "walk2","basket","library"};
+	std::vector<std::string> r_label = { "Basket","Library","Lego", "Walk1", "Walk2" };
+	std::vector<std::string> w_label = { "basket","library","lego", "walk1", "walk2" };
 	std::vector<std::string> m_array = { "m10", "m20", "m30" ,"m40" };
 	std::vector<std::string> delta_array = { "d1" "d2", "d3" ,"d5", "d10" };
 
@@ -70,22 +68,6 @@ void str_checker(std::string read_file, std::string write_file) {
 			exit(1);
 		}
 	}
-
-	int check_num = 0;
-
-	check_num = (int)read_file.rfind("ver");
-	if (read_file[check_num + 5] - '0' != delta) {
-		std::cout << "error: miss type:: read_file is wrong" << read_file << std::endl;
-		getchar();
-		exit(0);
-	}
-
-	check_num = (int)write_file.rfind("ver");
-	if (write_file[check_num + 5] - '0' != delta) {
-		std::cout << "error: miss type:: write_file is wrong" << write_file << std::endl;
-		getchar();
-		exit(0);
-	}
 }
 
 bool overwrite_check(std::string write_file) {       // うっかりデータを上書きしないようにするためのチェック関数
@@ -102,10 +84,9 @@ bool overwrite_check(std::string write_file) {       // うっかりデータを上書きし
 }
 
 void change_filename(std::string& read_file,  std::string& write_file, int loop_count) {
-	const std::string mp4_read_array[5] = { "Basketball.avi", "Library.avi","Lego.avi", "Walk1.avi", "Walk2.avi" };
-	const std::string read_array[5] = { "basket" ,"library","lego", "walk1", "walk2"};
+	const std::string mp4_read_array[5] = { "Basketball.avi", "Library.avi","Lego.avi","Walk2.avi", "Walk1.avi" };
+	const std::string read_array[5] = { "basket" ,"library" ,"lego", "walk2" , "walk1"};
 	int change_point = 0;
-	int check_num = 0;
 
 	// read_fileの操作(loop_countに応じてファイルの名前の動画のタイトル部分を変更)
 	change_point = (int)read_file.find("xxx");
@@ -114,7 +95,6 @@ void change_filename(std::string& read_file,  std::string& write_file, int loop_
 	// write_fileの操作
 	change_point = (int)write_file.find("xxx");
 	write_file.replace(change_point, 3, read_array[loop_count - 1]);
-
 
 	// コンソール出力
 	std::cout << read_file  << std::endl;
