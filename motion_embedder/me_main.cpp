@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
 			}
 
 			//–„‚ß‚İˆ—(num_embeddframe•ª‚¾‚¯ˆ—‚ğs‚¤)
-			motion_embedder(luminance, dst_luminance, check_motion_array, embed, cap.get(CV_CAP_PROP_POS_FRAMES), num_embedframe, delta);
+			motion_embedder(luminance, dst_luminance,  embed, cap.get(CV_CAP_PROP_POS_FRAMES), num_embedframe, delta);
 
 			//timer end
 			meter.stop();

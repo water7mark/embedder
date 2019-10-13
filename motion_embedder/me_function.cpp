@@ -8,14 +8,12 @@ float average_thisfile = 0;
 static double cosine_table[block_height][block_width];  // DCT変換用のコサインテーブル
 
 void init_me(cv::VideoCapture* cap, std::vector<char>* embed, cv::Size* size, std::ofstream* ofs, cv::VideoWriter* writer, std::string read_file, std::string write_file, int num_embedframe) {
-		*embed = set_embeddata(embed_file);    
-		*cap = capture_open(read_file);        
-		*writer = mp4_writer_open(write_file + ".mp4", *cap);  // mp4なのでデータ量が小さいため分割の必要はない．．
-		size->width = cap->get(CV_CAP_PROP_FRAME_WIDTH);
-		size->height = cap->get(CV_CAP_PROP_FRAME_HEIGHT);
-
-//		set_ctable();  // set cosine_table 
-		
+	*embed = set_embeddata(embed_file);
+	*cap = capture_open(read_file);
+	//	*writer = mp4_writer_open(write_file + ".mp4", *cap);  // mp4なのでデータ量が小さいため分割の必要はない．．
+	*writer = writer_open(write_file + ".avi", *cap);
+	size->width = cap->get(CV_CAP_PROP_FRAME_WIDTH);
+	size->height = cap->get(CV_CAP_PROP_FRAME_HEIGHT);
 }
 
 void set_ctable() {    //DCT変換で使うテーブルを初期設定
@@ -60,17 +58,15 @@ cv::VideoCapture capture_open(const std::string read_file) {
 	return cap;
 }
 
-cv::VideoWriter mp4_writer_open(const std::string write_file, cv::VideoCapture cap) {
+cv::VideoWriter writer_open(const std::string write_file, cv::VideoCapture cap) {
 	cv::VideoWriter writer;
 	cv::Size size(cap.get(CV_CAP_PROP_FRAME_WIDTH), cap.get(CV_CAP_PROP_FRAME_HEIGHT));
-	writer.open(write_file, CV_FOURCC('M', 'P', '4', 'V'), cap.get(CV_CAP_PROP_FPS), size);
-	if (!writer.isOpened()) {
-		std::cout << "can't write video file.\n";
-		getchar();
+	writer.open(write_file, CV_FOURCC('D', 'I', 'B', ' '), cap.get(CV_CAP_PROP_FPS), size);
+	if (!writer.isOpened())
 		exit(5);
-	}
 	return writer;
 }
+
 
 cv::Mat filter(cv::Mat luminance) {                           // ブロック内の輝度値をならす(輝度値の平均化)
 	cv::Mat dst_luminance(luminance.size(), CV_32F);
@@ -107,35 +103,7 @@ float median(std::vector<float> v) {     // 中央値を返す
 	}
 }
 
-//void motion_detect(const cv::Mat& p_luminance,const cv::Mat& c_luminance, std::vector<cv::Mat>& check_lumi_array, int cframe, int c_num_embedframe) {
-//	// 連続する2フレームの輝度値から
-//
-//	// 要素がcv::Mat型の配列を指すポインタを受け取ってそれをもとに動き検出を行う
-//	cv::Size size(FRAME_WIDTH, FRAME_HEIGHT);
-//	cv::Mat lumi_diff(size, CV_8UC3);
-//
-//	for (int j = 0; j < FRAME_HEIGHT; j += block_height) {
-//		for (int i = 0; i < FRAME_WIDTH; i += block_width) {
-//			// ↓DAAD変換するとなぜかすべての画素の輝度値が大幅に上がるので，全ての画素の中で最も輝度値の変化が小さいものの変化量を足し合わせておきたい
-//
-//			for (int k = 0; k < block_height; k++) {
-//				lumi_diff = std::abs(p_luminance.at<unsigned char>(j, i) - c_luminance.at<unsigned char>(j, i));  // 前後のフレームの輝度差を取る
-//
-//			}
-//			if ((lumi_diff >= THRESHOLD_DIFF_PIXEL) && (lumi_diff <= 100)) {
-//				check_lumi_array[c_num_embedframe].at<unsigned char>(j, i) = 1 + 4 * lumi_diff / 100;
-//			}
-//			else if (lumi_diff > 100) {
-//				check_lumi_array[c_num_embedframe].at<unsigned char>(j, i) = 5;
-//			}
-//			else {
-//				check_lumi_array[c_num_embedframe].at<unsigned char>(j, i) = 1;
-//			}
-//		}
-//	}
-//}
-
-void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_luminance, std::vector<cv::Mat>& check_array, std::vector<char> embed, int cframe,int num_embedframe, int delta) {
+void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_luminance, std::vector<char> embed, int cframe,int num_embedframe, int delta) {
 	std::vector<cv::Mat> means;  //ブロック単位の平均輝度値を保持
 	std::vector<cv::Mat> deviations;  //ブロック単位の平均値からの偏差を保持
 	cv::Mat m_means = cv::Mat::zeros(1920, 1080, CV_32F);  //mフレーム間での「ブロック単位の平均値」の平均値を保持
@@ -154,21 +122,6 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 	for (int i = 1; i < num_embedframe; i++) {
 		m_means += means[i] / num_embedframe;
 	}
-
-	// 2018_11_21 add
-	//cv::Mat dev_means;
-	//std::vector<cv::Mat> temp_sd(num_embedframe);
-	//std::vector<cv::Mat> s_deviations(num_embedframe);  // 各ブロックごとの平均輝度値の偏差  // 各ブロックごとの平均輝度値の標準偏差
-	//// ↓ブロック単位の平均値の偏差を格納する(mフレームでどれだけブロックの輝度が変化したかを示す)mフレーム間での「ブロック単位の平均値の平均値」- ブロック単位の平均値
-	//cv::pow((means[0] - m_means), 2, temp_sd[0]);
-	//cv::sqrt((temp_sd[0] / num_embedframe), s_deviations[0]);  
-	//cv::Mat standard_deviation = s_deviations[0].clone();
-	//for (int i = 1; i < num_embedframe; i++) {
-	//	cv::pow((means[i] - m_means), 2, temp_sd[i]);
-	//	cv::sqrt((temp_sd[i] / num_embedframe), s_deviations[i]);
-	//	standard_deviation += s_deviations[i];
-	//}
-
 
 	// 分散を求めたいとき
 	//mフレーム間での「ブロック単位の平均値」の平均値を保持
