@@ -261,47 +261,43 @@ void operate_lumi(std::vector<float> &lumi, float average, float variance, int d
 	average_thisfile = average;
 
 
+	// 計算用の配列に格納
 	for (int i = 0; i < end(lumi) - begin(lumi); i++) {
 		temp_lumi[i] = lumi[i];
 	}
 
-	for (int limit_time  = 0; limit_time < 30; limit_time++) {
+
+	for (int limit_time = 0; limit_time < 30; limit_time++) {
 		// 平均から最も遠い要素のインデックスを求める
 		std::vector<double>::iterator itr_max = std::max_element(temp_lumi.begin(), temp_lumi.end());
 		std::vector<double>::iterator itr_min = std::min_element(temp_lumi.begin(), temp_lumi.end());
 		index_max = std::distance(temp_lumi.begin(), itr_max);
 		index_min = std::distance(temp_lumi.begin(), itr_min);
-			   
+
 		num_low_ave = std::count_if(temp_lumi.begin(), temp_lumi.end(), is_less_than);
 		num_high_ave = std::count_if(temp_lumi.begin(), temp_lumi.end(), is_more_than);
 		now_variance = 0;
 
-		temp_lumi[index_max]--;
-		for (int j = 0; j < (end(temp_lumi) - begin(temp_lumi)); j++) {
-			if (temp_lumi[j] < average) {
-				temp_lumi[j] += 1 / num_low_ave;
-			}
-		}
-		//b
 
+		temp_lumi[index_max]--;
 		temp_lumi[index_min]++;
-		for (int j = 0; j < (end(temp_lumi) - begin(temp_lumi)); j++) {
-			if (temp_lumi[j] > average) {
-				temp_lumi[j] -= 1 / num_high_ave;
-			}
-		}
+
 
 		for (int k = 0; k < (end(temp_lumi) - begin(temp_lumi)); k++) {
 			now_variance += (temp_lumi[k] - average) * (temp_lumi[k] - average);
 		}
-		
 
-		if ((now_variance <= (variance * (10 - delta) / 10)) || (now_variance <= (variance - delta * delta))) { 
+
+		if ((now_variance <= (variance * (10 - delta) / 10)) || (now_variance <= (variance - delta * delta))) {
 			break;
 		}
 	}
 
+
+	// 元に戻す
 	for (int i = 0; i < end(lumi) - begin(lumi); i++) {
-		lumi[i] = temp_lumi[i];  
+		lumi[i] = temp_lumi[i];
 	}
 }
+
+
