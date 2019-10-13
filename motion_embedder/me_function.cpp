@@ -3,16 +3,19 @@
 int delta_thisfile = 0;
 float average_thisfile = 0;
 
-
+//static std::vector<std::vector<double>> dct_pdelta;    // できれば，周波数変換したものを事前に持っておくといいが．
+//static std::vector<std::vector<double>> dct_mdelta;
 static double cosine_table[block_height][block_width];  // DCT変換用のコサインテーブル
 
 void init_me(cv::VideoCapture* cap, std::vector<char>* embed, cv::Size* size, std::ofstream* ofs, cv::VideoWriter* writer, std::string read_file, std::string write_file, int num_embedframe) {
 		*embed = set_embeddata(embed_file);    
 		*cap = capture_open(read_file);        
-	//	*writer = mp4_writer_open(write_file + ".mp4", *cap);  // mp4なのでデータ量が小さいため分割の必要はない．．
-		*writer = writer_open(write_file + "_1.avi", *cap);
+		*writer = mp4_writer_open(write_file + ".mp4", *cap);  // mp4なのでデータ量が小さいため分割の必要はない．．
 		size->width = cap->get(CV_CAP_PROP_FRAME_WIDTH);
 		size->height = cap->get(CV_CAP_PROP_FRAME_HEIGHT);
+
+//		set_ctable();  // set cosine_table 
+		
 }
 
 void set_ctable() {    //DCT変換で使うテーブルを初期設定
@@ -57,15 +60,17 @@ cv::VideoCapture capture_open(const std::string read_file) {
 	return cap;
 }
 
-cv::VideoWriter writer_open(const std::string write_file, cv::VideoCapture cap) {
+cv::VideoWriter mp4_writer_open(const std::string write_file, cv::VideoCapture cap) {
 	cv::VideoWriter writer;
 	cv::Size size(cap.get(CV_CAP_PROP_FRAME_WIDTH), cap.get(CV_CAP_PROP_FRAME_HEIGHT));
-	writer.open(write_file, CV_FOURCC('D', 'I', 'B', ' '), cap.get(CV_CAP_PROP_FPS), size);
-	if (!writer.isOpened())
+	writer.open(write_file, CV_FOURCC('M', 'P', '4', 'V'), cap.get(CV_CAP_PROP_FPS), size);
+	if (!writer.isOpened()) {
+		std::cout << "can't write video file.\n";
+		getchar();
 		exit(5);
+	}
 	return writer;
 }
-
 
 cv::Mat filter(cv::Mat luminance) {                           // ブロック内の輝度値をならす(輝度値の平均化)
 	cv::Mat dst_luminance(luminance.size(), CV_32F);
@@ -130,7 +135,7 @@ float median(std::vector<float> v) {     // 中央値を返す
 //	}
 //}
 
-void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_luminance,std::vector<char> embed, int cframe,int num_embedframe, int delta) {
+void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_luminance, std::vector<cv::Mat>& check_array, std::vector<char> embed, int cframe,int num_embedframe, int delta) {
 	std::vector<cv::Mat> means;  //ブロック単位の平均輝度値を保持
 	std::vector<cv::Mat> deviations;  //ブロック単位の平均値からの偏差を保持
 	cv::Mat m_means = cv::Mat::zeros(1920, 1080, CV_32F);  //mフレーム間での「ブロック単位の平均値」の平均値を保持
@@ -150,6 +155,22 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 		m_means += means[i] / num_embedframe;
 	}
 
+	// 2018_11_21 add
+	//cv::Mat dev_means;
+	//std::vector<cv::Mat> temp_sd(num_embedframe);
+	//std::vector<cv::Mat> s_deviations(num_embedframe);  // 各ブロックごとの平均輝度値の偏差  // 各ブロックごとの平均輝度値の標準偏差
+	//// ↓ブロック単位の平均値の偏差を格納する(mフレームでどれだけブロックの輝度が変化したかを示す)mフレーム間での「ブロック単位の平均値の平均値」- ブロック単位の平均値
+	//cv::pow((means[0] - m_means), 2, temp_sd[0]);
+	//cv::sqrt((temp_sd[0] / num_embedframe), s_deviations[0]);  
+	//cv::Mat standard_deviation = s_deviations[0].clone();
+	//for (int i = 1; i < num_embedframe; i++) {
+	//	cv::pow((means[i] - m_means), 2, temp_sd[i]);
+	//	cv::sqrt((temp_sd[i] / num_embedframe), s_deviations[i]);
+	//	standard_deviation += s_deviations[i];
+	//}
+
+
+	// 分散を求めたいとき
 	//mフレーム間での「ブロック単位の平均値」の平均値を保持
 	std::vector<cv::Mat> t_variance(num_embedframe);
 	cv::pow((means[0] - m_means), 2, t_variance[0]);
@@ -234,44 +255,49 @@ void operate_lumi(std::vector<float> &lumi, float average, float variance, int d
 	size_t index_max, index_min; // 最大、最小の要素の添え字
 	size_t num_low_ave = 0;  // 平均よりも低い個数
 	size_t num_high_ave = 0; //平均よりも高い個数
-	float now_variance;  
-	std::vector<int> temp_lumi(20);
+	float now_variance;
+	std::vector<double> temp_lumi(20);
 
 	average_thisfile = average;
+
 
 	for (int i = 0; i < end(lumi) - begin(lumi); i++) {
 		temp_lumi[i] = lumi[i];
 	}
 
-	for (int limit_time  = 0; limit_time < 130000; limit_time++) {  // なぜ30？
+	for (int limit_time  = 0; limit_time < 30; limit_time++) {
 		// 平均から最も遠い要素のインデックスを求める
-		std::vector<int>::iterator itr_max = std::max_element(temp_lumi.begin(), temp_lumi.end());
-		std::vector<int>::iterator itr_min = std::min_element(temp_lumi.begin(), temp_lumi.end());
+		std::vector<double>::iterator itr_max = std::max_element(temp_lumi.begin(), temp_lumi.end());
+		std::vector<double>::iterator itr_min = std::min_element(temp_lumi.begin(), temp_lumi.end());
 		index_max = std::distance(temp_lumi.begin(), itr_max);
 		index_min = std::distance(temp_lumi.begin(), itr_min);
 			   
-		//num_low_ave = std::count_if(temp_lumi.begin(), temp_lumi.end(), is_less_than);
-		//num_high_ave = std::count_if(temp_lumi.begin(), temp_lumi.end(), is_more_than);
+		num_low_ave = std::count_if(temp_lumi.begin(), temp_lumi.end(), is_less_than);
+		num_high_ave = std::count_if(temp_lumi.begin(), temp_lumi.end(), is_more_than);
 		now_variance = 0;
 
 		temp_lumi[index_max]--;
+		for (int j = 0; j < (end(temp_lumi) - begin(temp_lumi)); j++) {
+			if (temp_lumi[j] < average) {
+				temp_lumi[j] += 1 / num_low_ave;
+			}
+		}
+		//b
+
 		temp_lumi[index_min]++;
+		for (int j = 0; j < (end(temp_lumi) - begin(temp_lumi)); j++) {
+			if (temp_lumi[j] > average) {
+				temp_lumi[j] -= 1 / num_high_ave;
+			}
+		}
 
 		for (int k = 0; k < (end(temp_lumi) - begin(temp_lumi)); k++) {
 			now_variance += (temp_lumi[k] - average) * (temp_lumi[k] - average);
 		}
-
-		now_variance /=  num_embedframe;
 		
-		if ((now_variance <= (variance * (10 - delta) / 10)) || (now_variance <= (variance - delta * delta))) {  
-			break;
-		}
-		//if (now_variance <= delta * delta) {
-		//	break;
-		//}
 
-		if (limit_time == 129999) {
-			std::cout << "発生" << std::endl;
+		if ((now_variance <= (variance * (10 - delta) / 10)) || (now_variance <= (variance - delta * delta))) { 
+			break;
 		}
 	}
 
