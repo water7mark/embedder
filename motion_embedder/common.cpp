@@ -1,6 +1,6 @@
 #include "me_header.h"
 
-// このファイルはいずれライブラリ化すべきか
+// このファイルはいずれライブラリ化すべき
 void frame_check(cv::Mat& frame_BGR) {
 	if (frame_BGR.empty()) {  // 意味はあるのか?
 		exit(112);
@@ -84,7 +84,7 @@ bool overwrite_check(std::string write_file) {       // うっかりデータを上書きし
 }
 
 void change_filename(std::string& read_file,  std::string& write_file, int loop_count) {
-	const std::string mp4_read_array[5] = { "Basket.mp4", "Library.mp4", "Lego.mp4", "Walk1.mp4", "Walk2.mp4" };
+	const std::string mp4_read_array[5] = { "Basketball.avi", "Library.avi", "Lego.avi", "Walk1.avi", "Walk2.avi" };
 	const std::string read_array[5] = { "basket" , "library" , "lego", "walk1", "walk2" };
 	int change_point = 0;
 
