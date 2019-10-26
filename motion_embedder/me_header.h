@@ -39,9 +39,9 @@ const std::string cosine_file("C:/Users/youhei/Desktop/research_all/research_dat
 
 //parameter
 const std::string basis_read_file("C:/IHC_videos/xxx");
-const std::string basis_write_file("C:/Users/youhei/Desktop/research_all/research_data/mp4_embedded_videos/sync/sync_sinki/sync_sinki_xxx_d5.avi");
+const std::string basis_write_file("C:/Users/youhei/Desktop/research_all/research_data/mp4_embedded_videos/sync/sync_sinki/10_15_test/sync_sinki_xxx_d3");
 const int num_embedframe = 20; //1回当たりの処理で埋め込むフレーム数(偶数)
-const double delta = 5; //埋め込み強度
+const double delta = 3; //埋め込み強度
 
 const int BG_width = 16;  // ブロック群の横の長さ
 const int BG_height = 9;  // ブロック群の縦の長さ

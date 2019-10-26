@@ -71,7 +71,7 @@ void str_checker(std::string read_file, std::string write_file) {
 }
 
 bool overwrite_check(std::string write_file) {       // うっかりデータを上書きしないようにするためのチェック関数
-	std::string new_write_file = write_file + ".mp4";
+	std::string new_write_file = write_file + ".avi";
 	std::ifstream ifs(new_write_file);
 
 	if (ifs.is_open()) {
@@ -84,8 +84,8 @@ bool overwrite_check(std::string write_file) {       // うっかりデータを上書きし
 }
 
 void change_filename(std::string& read_file,  std::string& write_file, int loop_count) {
-	const std::string mp4_read_array[5] = { "Basketball.avi", "Library.avi", "Lego.avi", "Walk1.avi", "Walk2.avi" };
-	const std::string read_array[5] = { "basket" , "library" , "lego", "walk1", "walk2" };
+	const std::string mp4_read_array[5] = { "Lego.avi", "Walk1.avi", "Walk2.avi", "Basketball.avi", "Library.avi"  };
+	const std::string read_array[5] = { "lego", "walk1", "walk2", "basket","library" };
 	int change_point = 0;
 
 	// read_fileの操作(loop_countに応じてファイルの名前の動画のタイトル部分を変更)

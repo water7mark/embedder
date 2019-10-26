@@ -3,15 +3,13 @@
 int delta_thisfile = 0;
 float average_thisfile = 0;
 
-//static std::vector<std::vector<double>> dct_pdelta;    // できれば，周波数変換したものを事前に持っておくといいが．
-//static std::vector<std::vector<double>> dct_mdelta;
 static double cosine_table[block_height][block_width];  // DCT変換用のコサインテーブル
 
 void init_me(cv::VideoCapture* cap, std::vector<char>* embed, cv::Size* size, std::ofstream* ofs, cv::VideoWriter* writer, std::string read_file, std::string write_file, int num_embedframe) {
 	*embed = set_embeddata(embed_file);
 	*cap = capture_open(read_file);
 	//	*writer = mp4_writer_open(write_file + ".mp4", *cap);  // mp4なのでデータ量が小さいため分割の必要はない．．
-	*writer = writer_open(write_file + ".avi", *cap);
+	*writer = writer_open(write_file + "_1.avi", *cap);
 	size->width = cap->get(CV_CAP_PROP_FRAME_WIDTH);
 	size->height = cap->get(CV_CAP_PROP_FRAME_HEIGHT);
 }
