@@ -262,3 +262,10 @@ void operate_lumi(std::vector<float> &lumi, float average, float variance, int d
 }
 
 
+void change_matrix(int& me_mat) {    // 動きベクトルの表を変更し、を調整する
+
+
+	
+
+
+}
