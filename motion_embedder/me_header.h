@@ -33,15 +33,15 @@ using comp = std::complex<double>;
 
 #define PROJECT_LOOP 5
 
-const std::string log_file("C:/Users/youhei/Desktop/research_all/research_data/log_all.txt");// いつもと違うので注意
-const std::string embed_file("C:/Users/youhei/Desktop/research_all/research_data/m2_embednum16x9_one16.txt");  // ！！要確認！！
+const std::string log_file("C:/Users/youhei/Desktop/research_all/research_data/log_all.txt");
+const std::string embed_file("C:/Users/youhei/Desktop/research_all/research_data/m2_embednum16x9_one16.txt"); 
 const std::string cosine_file("C:/Users/youhei/Desktop/research_all/research_data/cosine_table.txt");
 
 //parameter
 const std::string basis_read_file("C:/IHC_videos/xxx");
-const std::string basis_write_file("C:/Users/youhei/Desktop/research_all/research_data/mp4_embedded_videos/sync/sync_sinki/10_15_test/sync_sinki_xxx_d3");
+const std::string basis_write_file("C:/Users/youhei/Desktop/research_all/research_data/mp4_embedded_videos/motion_vector/xxx_d1");
 const int num_embedframe = 20; //1回当たりの処理で埋め込むフレーム数(偶数)
-const double delta = 3; //埋め込み強度
+const double delta = 1; //埋め込み強度
 
 const int BG_width = 16;  // ブロック群の横の長さ
 const int BG_height = 9;  // ブロック群の縦の長さ
@@ -60,7 +60,7 @@ extern cv::VideoCapture capture_open(const std::string read_file);
 extern cv::VideoWriter writer_open(const std::string write_file, cv::VideoCapture cap);
 extern void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_luminance, std::vector<char> embed, int cframe, int num_embedframe, int delta);
 extern void operate_lumi(std::vector<float> &lumi, float average, float variance, int delta);
-
+cv::VideoWriter mp4_writer_open(const std::string write_file, cv::VideoCapture cap);
 
 // common
 extern void frame_check(cv::Mat& frame_BGR);      // フレームのエラー処理など

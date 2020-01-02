@@ -9,7 +9,7 @@ void init_me(cv::VideoCapture* cap, std::vector<char>* embed, cv::Size* size, st
 	*embed = set_embeddata(embed_file);
 	*cap = capture_open(read_file);
 	//	*writer = mp4_writer_open(write_file + ".mp4", *cap);  // mp4なのでデータ量が小さいため分割の必要はない．．
-	*writer = writer_open(write_file + "_1.avi", *cap);
+	*writer = mp4_writer_open(write_file + ".mp4", *cap);
 	size->width = cap->get(CV_CAP_PROP_FRAME_WIDTH);
 	size->height = cap->get(CV_CAP_PROP_FRAME_HEIGHT);
 }
@@ -64,6 +64,16 @@ cv::VideoWriter writer_open(const std::string write_file, cv::VideoCapture cap) 
 		exit(5);
 	return writer;
 }
+
+cv::VideoWriter mp4_writer_open(const std::string write_file, cv::VideoCapture cap) {
+	cv::VideoWriter writer;
+	cv::Size size(cap.get(CV_CAP_PROP_FRAME_WIDTH), cap.get(CV_CAP_PROP_FRAME_HEIGHT));
+	writer.open(write_file, CV_FOURCC('M', 'P', '4', 'V'), cap.get(CV_CAP_PROP_FPS), size);
+	if (!writer.isOpened())
+		exit(5);
+	return writer;
+}
+
 
 
 cv::Mat filter(cv::Mat luminance) {                           // ブロック内の輝度値をならす(輝度値の平均化)
