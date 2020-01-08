@@ -242,10 +242,6 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 	cv::Mat Is_stop = cv::Mat::zeros(cv::Size(1920, 1080), CV_8UC1);     // 20フレームの間でその画素が他の画素によって上書きされるなら1を入れる。そうでなければ0のまま
 	cv::Mat Is_move = cv::Mat::zeros(cv::Size(1920, 1080), CV_8UC1);   // 20フレームのどこかで移動する場合はtrueになる、一度も移動しないならfalse
 
-
-	//next_pos_all temp_class;
-	//next_pos_all temp_class2;
-
 	std::vector<cv::Mat> result_lumi;
 	std::vector<float> lumi(20, 0);         //　初期化必要
 	std::vector<cv::Mat> lumi_map;
@@ -255,17 +251,7 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 		for (x = 0; x < FRAME_WIDTH; x += block_width) {
 			// 先に20フレーム間で当該画素が移動するかを調べる
 			for (int i = 0; i < num_embedframe; i++) {
-
-				//temp_class.now_y = cv::Mat::zeros(cv::Size(1920, 1080), NP_DETA_SIZE);
-				//temp_class.now_x = cv::Mat::zeros(cv::Size(1920, 1080), NP_DETA_SIZE);
-
 				if (i == 0) {      // i=0は自身を先頭に格納	
-					//temp_class2.now_y = cv::Mat::zeros(cv::Size(1920, 1080), NP_DETA_SIZE);
-					//temp_class2.now_x = cv::Mat::zeros(cv::Size(1920, 1080), NP_DETA_SIZE);
-					//temp_class2.now_y.at<NP_DETA_TYPE>(y,x) = y;
-					//temp_class2.now_x.at<NP_DETA_TYPE>(y,x) = x;
-					//frame_pos_all.push_back(temp_class2);
-
 					lumi_map[i].at<float>(y, x) = means[i].at<float>(y, x);
 				}
 				else if (i == num_embedframe - 1) {
@@ -275,9 +261,6 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 
 				if (Is_there_mv(mv_all, cframe + i)) {  // 現在のフレーム番号を与えると動きベクトルが出力されているか返す関数					
 					std::pair<int, int> next_pixel = get_next_pos(mv_all, cframe + i, y, x);
-					//temp_class.now_y.at<NP_DETA_TYPE>(y,x) = next_pixel.first;
-					//temp_class.now_x.at<NP_DETA_TYPE>(y,x) = next_pixel.second;
-					//frame_pos_all.push_back(temp_class);
 
 					lumi_map[i + 1].at<float>(y, x) = means[i + 1].at<float>(next_pixel.first, next_pixel.second);
 
@@ -285,10 +268,6 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 					Is_move.at<unsigned char>(y, x) = 1;
 				}
 				else {       // 今と変わらない場合は、現在の座標を格納する
-					//temp_class.now_y.at<NP_DETA_TYPE>(y, x) = y;
-					//temp_class.now_x.at<NP_DETA_TYPE>(y, x) = x;
-					//frame_pos_all.push_back(temp_class);
-
 					lumi[i + 1] = means[i + 1].at<float>(y, x);
 				}
 			}
@@ -296,19 +275,15 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 	}
 
 
-	//frame_pos_allに3種類(動かないもの、動いているもの、上書きされるものの3つが格納できているか考える必要がある。)
-	// 一応上まではできた。以下のプログラムがまだ、
-
-	float ave_lumi;
+	// 各画素において埋め込み処理を行う、
+	float ave_lumi;   
 	float var_lumi;
 	float num;
 	
-	
-
 	// 埋め込み処理
 	for (y = 0; y < FRAME_HEIGHT; y += block_height) {
 		for (x = 0; x < FRAME_WIDTH; x += block_width) {
-			if (Is_stop.at<unsigned char>(y, x) = true) {      // ここで上書きされているかどうかを調べる、上書きされているなら埋め込みはしない
+			if (Is_stop.at<unsigned char>(y, x) == true) {      // ここで上書きされているかどうかを調べる、上書きされているなら埋め込みはしない
 				continue;
 			}
 			else if (Is_move.at<unsigned char>(y, x) == 1) {
@@ -329,25 +304,28 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 				// 平均と分散求め終わり
 
 
+				std::pair<int, int> next_point;     //
 				if (num == 0) {
 					for (int t_delta = delta; t_delta >= 1; t_delta--) {   // deltaよりもどの程度分散が大きいかどうかで操作する量を決めている
 						if (var_lumi >= t_delta * t_delta) {
 							operate_lumi_for_zero(lumi, ave_lumi, var_lumi, t_delta);
 						}
 					}
-
+					
 					for (int i = 0; i < num_embedframe; i++) {              // 操作した分を反映させる
-						result_lumi[i].at<float>(frame_pos_all[i].now_y.at<NP_DETA_TYPE>(y, x), frame_pos_all[i].now_x.at<NP_DETA_TYPE>(y, x)) = lumi[i];
+						next_point = get_next_pos(mv_all, cframe + i, y, x);
+						result_lumi[i].at<next_point.first, next_point.second> = lumi[i];
+						lumi[i] = 0;
 					}
 				}
 				else {
 					for (int i = 0; i < num_embedframe; i++) {
 						operate_lumi_for_one(lumi, ave_lumi, var_lumi, delta);
-						result_lumi[i].at<float>(y, x) = lumi[i];
+						result_lumi[i].at<next_point.first, next_point.second> = lumi[i];
+						lumi[i] = 0;
 					}
 				}
 			}
-
 			else {                                                 // 従来通り
 				float num = (embed[(x / block_width) % BG_width + ((y / block_height) % BG_height)*BG_width] == '0') ? 0 : 1;
 				var_lumi = variance.at<float>(y, x);
@@ -372,6 +350,7 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 					for (int i = 0; i < num_embedframe; i++) {
 						operate_lumi_for_one(lumi, m_means.at<float>(y, x), var_lumi, delta);
 						result_lumi[i].at<float>(y, x) = lumi[i];
+						lumi[i] = 0;
 					}
 				}
 			}
