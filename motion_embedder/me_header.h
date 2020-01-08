@@ -51,16 +51,38 @@ const int block_height = 8; // DCTブロックの縦幅
 const int FRAME_width = 1920;  // フレームの横の長さ
 const int FRAME_height = 1080; // フレームの縦の長さ
 
+const std::string basis_motion_vector_file("C:/share_ubuntu/output/xxx_d1.csv");       // 動きベクトルの元ファイル
+
+
+class mv_class {    // 元データをとりあえず整理して格納する用のクラス
+public:
+	int frame_index;   // フレームの番号
+	cv::Mat x_vector;
+	cv::Mat y_vector;
+};
+
+
+class next_pos_all {        //各座標ごとに次のフレームでの座標を格納するクラス
+public:
+	cv::Mat now_x;
+	cv::Mat now_y;
+};
 
 
 // prototype
-extern void init_me(cv::VideoCapture* cap, std::vector<char>* embed, cv::Size* size, std::ofstream* ofs, cv::VideoWriter* writer, std::string read_file, std::string write_file, int num_embedframe);
+void init_me(cv::VideoCapture* cap, std::vector<char>* embed, cv::Size* size, std::ofstream* ofs, cv::VideoWriter* writer, std::string read_file, std::string write_file, std::string motion_vector_file, int num_embedframe);
 extern std::vector<char> set_embeddata(const std::string filename);
 extern cv::VideoCapture capture_open(const std::string read_file);
 extern cv::VideoWriter writer_open(const std::string write_file, cv::VideoCapture cap);
-extern void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_luminance, std::vector<char> embed, int cframe, int num_embedframe, int delta);
-extern void operate_lumi(std::vector<float> &lumi, float average, float variance, int delta);
+extern void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_luminance, std::vector<char> embed, int cframe, int num_embedframe, int delta,std::string motion_vector_file, std::vector<mv_class>& mv_all);
+extern void operate_lumi_for_zero(std::vector<float> &lumi, float average, float variance, int delta);
+void operate_lumi_for_one(std::vector<float> &lumi, float average, float variance, int delta);
 cv::VideoWriter mp4_writer_open(const std::string write_file, cv::VideoCapture cap);
+
+// add
+void set_motionvector(const std::string motion_vector_file, std::vector<mv_class>& mv_all, int cframe);
+std::pair<int, int > get_next_pos(std::vector<mv_class>& mv_all, int frame, int y, int x);
+bool Is_there_mv(std::vector<mv_class> &mv_all, int frame);
 
 // common
 extern void frame_check(cv::Mat& frame_BGR);      // フレームのエラー処理など
@@ -68,12 +90,6 @@ extern void log_write(std::string read_file, std::string write_file);
 extern void str_checker(std::string read_file, std::string write_file);
 extern bool overwrite_check(std::string write_file);
 
-extern void change_filename(std::string& read_file, std::string& write_file, int loop_count);
-//void set_ctable();
-//void dct_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_luminance, std::vector<char> embed, int cframe, int num_embedframe, int delta);
-
-
-//void dc_trans(const std::vector<std::vector<double>>& flumi, std::vector <std::vector<double>>& dst_flumi);
-//void idct_trans(std::vector<std::vector<double>>& dct_lumi, std::vector<std::vector<double>>& dst_Flumi);
+void change_filename(std::string& read_file, std::string& write_file, std::string& motion_vector_file, int loop_count);
 
 #endif

@@ -6,8 +6,9 @@ int main(int argc, char *argv[])
 		// read_file, write_fileをループごとに適切な名前に変更する
 		std::string read_file = basis_read_file;
 		std::string write_file = basis_write_file;
+		std::string motion_vector_file = basis_motion_vector_file;
 
-		change_filename(read_file, write_file, now_loop);
+		change_filename(read_file, write_file, motion_vector_file , now_loop);
 
 		log_write(read_file, write_file);
 		str_checker(read_file, write_file);
@@ -25,8 +26,10 @@ int main(int argc, char *argv[])
 		cv::Size size;
 
 
+		std::vector<mv_class> mv_all;        // 元ファイルから読み込んだ動きベクトルのデータを整理してすべて格納
+
 		//初期化
-		init_me(&cap, &embed, &size, &ofs, &writer, read_file, write_file, num_embedframe);
+		init_me(&cap, &embed, &size, &ofs, &writer, read_file, write_file, motion_vector_file, num_embedframe);
 		int total_frames = cap.get(CV_CAP_PROP_FRAME_COUNT) - 1;  // 0フレーム分をカット
 
 		do {
@@ -76,7 +79,7 @@ int main(int argc, char *argv[])
 			}
 
 			//埋め込み処理(num_embeddframe分だけ処理を行う)
-			motion_embedder(luminance, dst_luminance, embed, cap.get(CV_CAP_PROP_POS_FRAMES), num_embedframe, delta);
+			motion_embedder(luminance, dst_luminance, embed, cap.get(CV_CAP_PROP_POS_FRAMES) - num_embedframe, num_embedframe, delta,motion_vector_file, mv_all);
 
 			//timer end
 			meter.stop();

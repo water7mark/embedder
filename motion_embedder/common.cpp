@@ -40,6 +40,8 @@ void str_checker(std::string read_file, std::string write_file) {
 	// 本当は，連想配列を使うべきでは?   // 同じ部分は関数化すべき
 	std::vector<std::string> r_label = { "Basket","Library","Lego", "Walk1", "Walk2" };
 	std::vector<std::string> w_label = { "basket","library","lego", "walk1", "walk2" };
+
+	std::vector<std::string> mv_label = { "basket","library","lego", "walk1", "walk2" };
 	std::vector<std::string> m_array = { "m10", "m20", "m30" ,"m40" };
 	std::vector<std::string> delta_array = { "d1" "d2", "d3" ,"d5", "d10" };
 
@@ -83,9 +85,10 @@ bool overwrite_check(std::string write_file) {       // うっかりデータを上書きし
 	return true;
 }
 
-void change_filename(std::string& read_file,  std::string& write_file, int loop_count) {
+void change_filename(std::string& read_file,  std::string& write_file, std::string& motion_vector_file, int loop_count) {
 	const std::string mp4_read_array[5] = {"Basketball.avi", "Library.avi" , "Lego.avi", "Walk1.avi", "Walk2.avi"};
 	const std::string read_array[5] = { "basket", "library","lego", "walk1", "walk2"};
+	const std::vector<std::string> mv_label = { "basket","library","lego", "walk1", "walk2" };
 	int change_point = 0;
 
 	// read_fileの操作(loop_countに応じてファイルの名前の動画のタイトル部分を変更)
@@ -95,6 +98,11 @@ void change_filename(std::string& read_file,  std::string& write_file, int loop_
 	// write_fileの操作
 	change_point = (int)write_file.find("xxx");
 	write_file.replace(change_point, 3, read_array[loop_count - 1]);
+
+	
+	// motion_vectorの操作
+	change_point = (int)motion_vector_file.find("xxx");
+	motion_vector_file.replace(change_point, 3, mv_label[loop_count - 1]);
 
 	// コンソール出力
 	std::cout << read_file  << std::endl;
