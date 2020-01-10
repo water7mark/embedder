@@ -25,7 +25,6 @@ int main(int argc, char *argv[])
 		int framenum;
 		cv::Size size;
 
-
 		std::vector<mv_class> mv_all;        // 元ファイルから読み込んだ動きベクトルのデータを整理してすべて格納
 
 		//初期化
