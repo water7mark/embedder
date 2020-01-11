@@ -11,8 +11,6 @@ float average_thisfile = 0;
 #define dy 1
 
 static double cosine_table[block_height][block_width];  // DCT変換用のコサインテーブル
-static int motionvector_block_size = 16; // 動きベクトルのグリッドブロックのサイズ
-
 static int matrix_height = 128;
 static int matrix_width = 120;
 
@@ -237,142 +235,157 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 	// 作成終了
 
 
-	std::vector<cv::Mat>Is_stop(20, cv::Mat::zeros(cv::Size(1920, 1080), CV_8UC1);     // 当該画素が上書きされるか判定，上書きされたフレームで1，その画素が再び他の画素へ移動したならそのフレームで-1を格納する
-	cv::Mat Is_move = cv::Mat::zeros(cv::Size(1920, 1080), CV_8UC1);   // 当該画素が他の画素位置に動くかどうかの判定に用いる．20フレームのどこかで移動する場合はtrueになる、一度も移動しないならfalse
+	std::vector<cv::Mat>Is_stop(20, cv::Mat::zeros(cv::Size(FRAME_width/ 8, FRAME_height/ 8), CV_8UC1));     // 当該画素が上書きされるか判定，上書きされたフレームで-1，その画素が再び他の画素へ移動したならそのフレームで1を格納する
+    std::vector<cv::Mat>Is_move(20, cv::Mat::zeros(cv::Size(FRAME_width /8, FRAME_height / 8), CV_8UC1)); // 当該画素が他の画素位置に動くかどうかの判定に用いる．20フレームのどこかで移動する場合はtrueになる、一度も移動しないならfalse
 
-	std::vector<cv::Mat> result_lumi(20, cv::Mat::zeros(cv::Size(1920, 1080), CV_8UC1));
-	std::vector<cv::Mat> lumi_map(20, cv::Mat::zeros(cv::Size(1920, 1080), CV_32F));    // meansが32Fであるから型を合わせる．
+	std::vector<cv::Mat> result_lumi(20, cv::Mat::zeros(cv::Size(FRAME_width / 8, FRAME_height/ 8), CV_32F));
+	std::vector<cv::Mat> lumi_map(20, cv::Mat::zeros(cv::Size(FRAME_width / 8, FRAME_height / 8), CV_32F));    // meansが32Fであるから型を合わせる．
+	std::vector<cv::Mat> comp(20, cv::Mat::zeros(cv::Size(FRAME_width /8, FRAME_height/8), CV_8UC1));
 
 	// 先に動きベクトルの処理
-	for (y = 0; y < FRAME_HEIGHT; y += block_height) {
-		for (x = 0; x < FRAME_WIDTH; x += block_width) {
-			// 最初は現在位置の画素の輝度値を格納する
-			lumi_map[0].at<float>(y, x) = means[0].at<float>(y, x);
+	for (int i = 0; i < num_embedframe; i++)
+		for (y = 0; y < FRAME_height / 8; y ++) {
+			for (x = 0; x < FRAME_width / 8; x++) {{
+					if (Is_there_mv(mv_all, cframe + i)) {  // 現在のフレーム番号を与えると動きベクトルが出力されているか返す関数	
 
-			// その後19フレーム分
-			for (int i = 1; i < num_embedframe; i++) {
-				int temp_y = y, temp_x = x;
+						std::pair<int, int> next_pixel = get_next_pos(mv_all, cframe + i, y, x);    //フレーム番号とptsがごっちゃになっていないか確認する(現在のフレームを返せばいいと思われ)
 
-				if (Is_there_mv(mv_all, cframe + i)) {  // 現在のフレーム番号を与えると動きベクトルが出力されているか返す関数					
-					std::pair<int, int> next_pixel = get_next_pos(mv_all, cframe + i, temp_y, temp_x);    //フレーム番号とptsがごっちゃになっていないか確認する
-
-					lumi_map[i].at<float>(y, x) = means[i].at<float>(next_pixel.first, next_pixel.second);
-
-					// この段階でstop < moveなら
-					Is_stop[i].at<unsigned char>(next_pixel.first, next_pixel.second) = 1;
-					Is_move.at<unsigned char>(temp_y, temp_x) = i;
-					Is_stop[i].at<unsigned char>(temp_y, temp_x) = -1;
-					temp_y = next_pixel.first;
-					temp_x = next_pixel.second;
+						Is_stop[i].at<unsigned char>(y, x) = 1;
+						Is_stop[i + 1].at<unsigned char>(next_pixel.first, next_pixel.second) = -1;
+						Is_move[i].at<unsigned char>(y, x) = 1;
+					}
+					else {
+						// 継続条件を満たさないようにしてforを2つ抜ける
+						y = FRAME_height / 8 - 1;
+						x = FRAME_width / 8 - 1;
+					}
 				}
-				else {       // 今と変わらない場合は、現在の座標を格納する
-					lumi_map[i].at<float>(y, x) = means[i].at<float>(temp_y, temp_x);
-				}
+			}
+	}
 
+	//↑途中で上書きされたとしてもその情報は，lumi_mapには載らない(でも，外側のループをnum_embedframeにすれば，)
+
+
+	// 各画素において埋め込み処理を行う、
+	int num;          // 現在の画素に割り当てるべき透かしビットを格納
+
+
+	// lumi_map求める
+	for (y = 0; y < FRAME_height / block_size; y++) {
+		for (x = 0; x < FRAME_width / block_size; x++) {
+			int temp_y = y;
+			int temp_x = x;
+
+			lumi_map[0].at<float>(temp_y, temp_x) = means[0].at<float>(temp_y *  block_size, temp_x *  block_size);
+			comp[0].at<unsigned char>(temp_y, temp_x) = 1;
+
+
+			int jump_flg = 0;   // 移動した際に移動先のIsstopに-1をつける．そのため最初のifで通った直後に次のループのelseifに引っかからないようにするため
+			for (int i = 0; i < num_embedframe - 1; i++) {
+				if (Is_stop[i].at<unsigned char>(temp_y, temp_x) == 1) {     // 他の画素位置に移動しているなら
+					std::pair<int, int> next_point;     //
+					next_point = get_next_pos(mv_all, cframe + i , temp_y, temp_x);
+					lumi_map[i + 1].at<float>(y, x) = means[i + 1].at<float>(next_point.first *  block_size, next_point.second *  block_size);
+					comp[i + 1].at<unsigned char>(next_point.first, next_point.second) = 1;
+					temp_y = next_point.first;
+					temp_x = next_point.second;
+					jump_flg = 1;
+				}
+				else if (Is_stop[i].at<unsigned char>(temp_y, temp_x) == -1 && jump_flg != 1) {       // 移動せず上書きされたならlumi_mapには何も読み込まない
+					continue;
+				}
+				else { 
+					lumi_map[i + 1].at<float>(y, x) = means[i + 1].at<float>(temp_y *  block_size, temp_x *  block_size);
+					comp[i + 1].at<unsigned char>(temp_y, temp_x) = 1;
+					jump_flg = 0;
+				}
 			}
 		}
 	}
 
-	//↑途中で上書きされたとしてもその情報は，lumi_mapには載らない
 
+	// 結局この段階でlumi_mapはどうなっているのか，すべて埋まっているのか，穴があるのか．．．
+	// →すべて埋まっている．(動きベクトルファイルはすべてのブロックについて何らかの数値が割り当てられている，それをget_next_posで利用しているのだから当然)
+	// lumi_mapには，lumi_mapの画素位置ごとに先頭フレームからそのブロックがどのように移動したかが書かれている
+	// 穴が発生するのは動きが発生したときのみ
 
-	// 各画素において埋め込み処理を行う、
-	float ave_lumi;   
-	float var_lumi;
-	int num;          // 現在の画素に割り当てるべき透かしビットを格納
 	std::vector<float> lumi(20, 0);         //　lumi_mapの各ブロックの輝度値を取り出して，計算する際にfloatにする必要がある
-
-	//int stop_num;
 	int sum_stop;
+	float ave_lumi = 0;   
+	float var_lumi  =0;
 
-	for (y = 0; y < FRAME_HEIGHT; y += block_height) {
-		for (x = 0; x < FRAME_WIDTH; x += block_width) {
+	for (y = 0; y < FRAME_height / block_size; y ++) {
+		for (x = 0; x < FRAME_width / block_size; x++) {
 			num = (embed[(x / block_width) % BG_width + ((y / block_height) % BG_height)*BG_width] == '0') ? 0 : 1;
+			int temp_y = y;
+			int temp_x = x;
 
 			for (int i = 0; i < num_embedframe; i++) {
-				sum_stop += Is_stop[i].at<unsigned char>(y, x);
+				lumi[i] = lumi_map[i].at<float>(y, x);
+				sum_stop = Is_stop[i].at<unsigned char>(temp_y, temp_x);       // ここって，移動した先で上書きされても大丈夫？？あとで確認
+				ave_lumi += lumi[i];
+			}
+			
+			ave_lumi /= num_embedframe;
+			for (int i = 0; i < num_embedframe; i++) {
+				var_lumi += pow((lumi[i] - ave_lumi), 2);
 			}
 
-			//if () {      // is_stopが非ゼロでmoveが0なら埋め込み不可，共に非ゼロならstopが小さければ不可
-			//	if (Is_move.at<unsigned char>(y, x) == 0 || (Is_stop.at<unsigned char>(y, x) < Is_move.at<unsigned char>(y, x))) {
-			//		for (int i = 0; i < Is_stop.at<unsigned char>(y, x); i++) {
-			//			result_lumi[i].at<unsigned char>(y, x) = means[i].at<float>(y, x);
-			//			continue;
-			//		}
-			//	}			
-			//}
-			if (Is_stop[i].at<unsigned char>(y, x) == 1) {     // 他の画素位置に移動しているなら
-				//動いた画素の20フレーム分の平均と分散を求める
-				ave_lumi = 0;
-				var_lumi = 0;
-
-				for (int i = 0; i < num_embedframe; i++) {        // 当該画素における20フレーム分の輝度を集める
-					lumi[i] = lumi_map[i].at<float>(y, x);
-					ave_lumi += lumi[i];
-				}
-				ave_lumi /= 20;
-				for (int i = 0; i < num_embedframe; i++) {
-					var_lumi = pow((lumi[i] - ave_lumi), 2);
-				}
-				// 平均と分散求め終わり
-
-
-				std::pair<int, int> next_point;     //
+			if (sum_stop < 0) {
+				continue;
+			}
+			else {              // 20フレーム分画素がある場合
+				// 透かしビットに応じて計算
 				if (num == 0) {
 					for (int t_delta = delta; t_delta >= 1; t_delta--) {   // deltaよりもどの程度分散が大きいかどうかで操作する量を決めている
 						if (var_lumi >= t_delta * t_delta) {
 							operate_lumi_for_zero(lumi, ave_lumi, var_lumi, t_delta);
-						}
-					}
-					
-					for (int i = 0; i < num_embedframe; i++) {              // 操作した分を反映させる
-						next_point = get_next_pos(mv_all, cframe + i, y, x);
-						result_lumi[i].at<unsigned char>(next_point.first, next_point.second) = lumi[i];
-						lumi[i] = 0;
-					}
-				}
-				else {
-					for (int i = 0; i < num_embedframe; i++) {
-						operate_lumi_for_one(lumi, ave_lumi, var_lumi, delta);
-						result_lumi[i].at<unsigned char>(next_point.first, next_point.second) = lumi[i];
-						lumi[i] = 0;
-					}
-				}
-			}
-			else if(Is_move.at<unsigned char>(y, x) == 0){                                                 // 従来通り(他の画素に上書きされていないし，他の画素位置にも移動していない場合)
-				var_lumi = variance.at<float>(y, x);       // 平均はm_meansで求めてあるので求めない
-
-				if (num == 0) {  // 透かしビットが0の時
-					for (int i = 0; i < num_embedframe; i++) {
-						lumi[i] = means[i].at<float>(y, x);
-					}
-
-					for (int t_delta = delta; t_delta >= 1; t_delta--) {   // deltaよりもどの程度分散が大きいかどうかで操作する量を決めている
-						if (var_lumi >= t_delta * t_delta) {
-							operate_lumi_for_zero(lumi, m_means.at<float>(y, x), var_lumi, t_delta);
 							break;
 						}
 					}
-
-					for (int i = 0; i < num_embedframe; i++) {
-						result_lumi[i].at<unsigned char>(y, x) = lumi[i];
-						lumi[i] = 0;
-					}
 				}
 				else {    // 透かしビットが1の時
-					for (int i = 0; i < num_embedframe; i++) {
-						operate_lumi_for_one(lumi, m_means.at<float>(y, x), var_lumi, delta);
-						result_lumi[i].at<unsigned char>(y, x) = lumi[i];
-						lumi[i] = 0;
-					}
+					operate_lumi_for_one(lumi, ave_lumi, var_lumi, delta);
+				}
+
+
+				// 埋め込んだ結果をresult_lumiに格納
+				result_lumi[0].at<unsigned char>(y, x) = lumi[0];
+				temp_y = y;
+				temp_x = x;
+				for (int i = 0; i < num_embedframe - 1; i++) {
+					std::pair<int, int> next_point;
+					next_point = get_next_pos(mv_all, cframe + i, temp_y, temp_x);
+					result_lumi[i + 1].at<float>(temp_y, temp_x) = lumi[i + 1];
 				}
 			}
 		}
 	}
+		
 
 	//埋め込み後フレームを返す
 	for (int i = 0; i < num_embedframe; i++) {
-		dst_luminance.push_back(deviations[i] + result_lumi[i]);
+		for (y = 0; y < FRAME_height / block_size; y++) {
+			for (x = 0; x < FRAME_width / block_size; x++) {
+				if (comp[i].at<unsigned char>(y, x) == 0) {
+					result_lumi[i].at<float>(y, x) = means[i].at<float>(y * block_size, x *  block_size);
+				}
+			}
+		}
+
+		result_lumi[i].convertTo(result_lumi[i], CV_32F);          // 本当はresultもfloatにすべきかここで結局加算しないといけないし，この時点でキャストがかかってしまっている
+
+		for (y = 0; y < FRAME_height / block_size; y++) {
+			for (x = 0; x < FRAME_width / block_size; x++) {
+				
+				for (int m = 0; m < block_height; m++) {
+					for (int n = 0; n < block_width; n++) {
+						deviations[i].at<float>(y + m, x + n) += result_lumi[i].at<float>(y + m, x + n);
+					}
+				}
+			}
+		}
+		dst_luminance.push_back(deviations[i]);
 		dst_luminance[i].convertTo(dst_luminance[i], CV_8UC1);
 		//cv::imshow("0", dst_luminance[i]);
 		//cv::waitKey(200);	
@@ -458,11 +471,11 @@ void operate_lumi_for_zero(std::vector<float> &lumi, float average, float varian
 
 
 int ptob(int pixel_pos) {
-	return pixel_pos / motionvector_block_size;
+	return pixel_pos * block_size / motionvector_block_size;
 }
 
 int btop(int block_pos) {
-	return block_pos * motionvector_block_size;
+	return block_pos * motionvector_block_size / block_size;
 }
 
 std::pair<int, int > get_next_pos(std::vector<mv_class>& mv_all, int frame, int y, int x) {

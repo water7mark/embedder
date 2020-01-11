@@ -11,11 +11,6 @@
 //透かしビットが0の時は，平均輝度値の標準偏差を縮小させるように埋め込み，
 //透かしビットが1の時は，拡大させるように埋め込む
 
-
-
-
-#define FRAME_WIDTH 1920
-#define FRAME_HEIGHT 1080
 #define THRESHOLD_DIFF_PIXEL 7
 
 #include <opencv2/opencv.hpp>
@@ -50,6 +45,9 @@ const int block_height = 8; // DCTブロックの縦幅
 
 const int FRAME_width = 1920;  // フレームの横の長さ
 const int FRAME_height = 1080; // フレームの縦の長さ
+
+const int block_size = 8;  //  DCTブロックのサイズ
+const int motionvector_block_size = 16; // 動きベクトルのグリッドブロックのサイズ
 
 const std::string basis_motion_vector_file("C:/share_ubuntu/output/xxx_d1.csv");       // 動きベクトルの元ファイル
 
