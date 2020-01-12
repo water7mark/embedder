@@ -11,7 +11,7 @@ float average_thisfile = 0;
 #define dy 1
 
 static double cosine_table[block_height][block_width];  // DCT変換用のコサインテーブル
-static int matrix_height = 128;
+static int matrix_height = 134;
 static int matrix_width = 120;
 
 #define MV_DETA_SIZE CV_8SC1
@@ -64,7 +64,7 @@ std::vector<char> set_embeddata(const std::string filename) {
 
 void set_motionvector(const std::string motion_vector_file, std::vector<mv_class>& mv_all, int cframe) {
 	// ファイル内のデータが膨大すぎるため、埋め込み時に適宜この関数を呼び出して、その都度ファイルからデータを読み出す
-	// 埋め込む先頭フレーム(cframe)までファイル読み込みを飛ばしてからデータを取得する
+	// 埋め込む先頭フレーム(cframe)までファイル読み込みを飛ばしてからnum_embedframe分データを取得する
 
 	std::ifstream ifs;
 	ifs.open(motion_vector_file);
@@ -91,8 +91,8 @@ void set_motionvector(const std::string motion_vector_file, std::vector<mv_class
 
 		// 初期化
 		temp_class.frame_index = -1;
-		temp_class.x_vector = cv::Mat::zeros(cv::Size(1920, 1080), MV_DETA_SIZE);
-		temp_class.y_vector = cv::Mat::zeros(cv::Size(1920, 1080), MV_DETA_SIZE);
+		temp_class.x_vector = cv::Mat::zeros(cv::Size(FRAME_width / motionvector_block_size, FRAME_height / motionvector_block_size), MV_DETA_SIZE);
+		temp_class.y_vector = cv::Mat::zeros(cv::Size(FRAME_width / motionvector_block_size , FRAME_height / motionvector_block_size), MV_DETA_SIZE);
 
 
 		getline(ifs, str, ' ');
@@ -107,7 +107,7 @@ void set_motionvector(const std::string motion_vector_file, std::vector<mv_class
 		}
 		else if (str.find("shape") != std::string::npos) {
 			temp_start = str.find("shape");
-			temp_str = str.substr(temp_start + 13, str.length());    // origin=video(若しくはdummy)となっている仮定 
+		//	temp_str = str.substr(temp_start + 13, str.length());    // origin=video(若しくはdummy)となっている仮定 
 
 			for (int i = 0; i < 120 * matrix_height; i++) {
 				getline(ifs, str, '\t');
@@ -126,7 +126,12 @@ void set_motionvector(const std::string motion_vector_file, std::vector<mv_class
 					temp_class.x_vector.at<MV_DETA_TYPE>(i / 120, i % 120) = atoi(temp_str.c_str());
 				}
 				else {
-					temp_class.y_vector.at<MV_DETA_TYPE>(i / 120, i % 120) = atoi(temp_str.c_str());
+					temp_class.y_vector.at<MV_DETA_TYPE>((i /2) / 120, (i/2) % 120) = atoi(temp_str.c_str());
+				}
+
+				if (i == 120 * matrix_height - 1) {
+					int aaa;
+					aaa = 0;
 				}
 			}
 		}
@@ -244,8 +249,8 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 
 	// 先に動きベクトルの処理
 	for (int i = 0; i < num_embedframe; i++)
-		for (y = 0; y < FRAME_height / 8; y ++) {
-			for (x = 0; x < FRAME_width / 8; x++) {{
+		for (y = 0; y < FRAME_height / block_size; y ++) {
+			for (x = 0; x < FRAME_width / block_size; x++) {{
 					if (Is_there_mv(mv_all, cframe + i)) {  // 現在のフレーム番号を与えると動きベクトルが出力されているか返す関数	
 
 						std::pair<int, int> next_pixel = get_next_pos(mv_all, cframe + i, y, x);    //フレーム番号とptsがごっちゃになっていないか確認する(現在のフレームを返せばいいと思われ)
@@ -265,11 +270,8 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 
 	//↑途中で上書きされたとしてもその情報は，lumi_mapには載らない(でも，外側のループをnum_embedframeにすれば，)
 
-
-	// 各画素において埋め込み処理を行う、
+	
 	int num;          // 現在の画素に割り当てるべき透かしビットを格納
-
-
 	// lumi_map求める
 	for (y = 0; y < FRAME_height / block_size; y++) {
 		for (x = 0; x < FRAME_width / block_size; x++) {
@@ -283,7 +285,7 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 			int jump_flg = 0;   // 移動した際に移動先のIsstopに-1をつける．そのため最初のifで通った直後に次のループのelseifに引っかからないようにするため
 			for (int i = 0; i < num_embedframe - 1; i++) {
 				if (Is_stop[i].at<unsigned char>(temp_y, temp_x) == 1) {     // 他の画素位置に移動しているなら
-					std::pair<int, int> next_point;     //
+					std::pair<int, int> next_point;     
 					next_point = get_next_pos(mv_all, cframe + i , temp_y, temp_x);
 					lumi_map[i + 1].at<float>(y, x) = means[i + 1].at<float>(next_point.first *  block_size, next_point.second *  block_size);
 					comp[i + 1].at<unsigned char>(next_point.first, next_point.second) = 1;
@@ -350,7 +352,7 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 
 
 				// 埋め込んだ結果をresult_lumiに格納
-				result_lumi[0].at<unsigned char>(y, x) = lumi[0];
+				result_lumi[0].at<float>(y, x) = lumi[0];
 				temp_y = y;
 				temp_x = x;
 				for (int i = 0; i < num_embedframe - 1; i++) {
@@ -373,14 +375,13 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 			}
 		}
 
-		result_lumi[i].convertTo(result_lumi[i], CV_32F);          // 本当はresultもfloatにすべきかここで結局加算しないといけないし，この時点でキャストがかかってしまっている
 
 		for (y = 0; y < FRAME_height / block_size; y++) {
 			for (x = 0; x < FRAME_width / block_size; x++) {
 				
 				for (int m = 0; m < block_height; m++) {
 					for (int n = 0; n < block_width; n++) {
-						deviations[i].at<float>(y + m, x + n) += result_lumi[i].at<float>(y + m, x + n);
+						deviations[i].at<float>(y + m, x + n) += result_lumi[i].at<float>(y , x);
 					}
 				}
 			}
@@ -484,14 +485,25 @@ std::pair<int, int > get_next_pos(std::vector<mv_class>& mv_all, int frame, int 
 	int bl_y = ptob(y);
 	int bl_x = ptob(x);
 
-	std::pair<int, int> next_pos = std::make_pair(btop(mv_all[frame].y_vector.at<MV_DETA_TYPE>(bl_y, bl_x)) + y, btop(mv_all[frame].x_vector.at<MV_DETA_TYPE>(bl_y, bl_x)) + x);
+	std::pair<int, int> next_pos;
+
+	if (motionvector_block_size == 16) {       // フレームの縦幅が1080の時はマクロブロックサイズ16では割り切れず，8画素分余る．その場合，そのまま座標を返す
+		if (y == 134) {
+			next_pos.first = y;
+			next_pos.second = x;   
+
+			return next_pos;
+		}
+	}
+
+	next_pos = std::make_pair(btop(mv_all[frame % num_embedframe].y_vector.at<MV_DETA_TYPE>(bl_y, bl_x)) + y, btop(mv_all[frame % num_embedframe].x_vector.at<MV_DETA_TYPE>(bl_y, bl_x)) + x);
 
 	return next_pos;
 }
 
 bool Is_there_mv(std::vector<mv_class> &mv_all, int frame) {  // ダミー場合はfalseを返す
 
-	if (mv_all[frame].frame_index == -1) {
+	if (mv_all[frame % num_embedframe ].frame_index == -1) {
 		return false;
 	}
 	else {

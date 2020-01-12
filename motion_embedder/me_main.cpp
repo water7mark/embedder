@@ -103,6 +103,9 @@ int main(int argc, char *argv[])
 			std::cout << "frame" << cap.get(CV_CAP_PROP_POS_FRAMES) << std::endl;
 			meter.reset();
 			meter.start();
+
+			std::vector<mv_class>().swap(mv_all);
+
 		} while (cap.get(CV_CAP_PROP_POS_FRAMES) < total_frames);
 
 		//Œãˆ—

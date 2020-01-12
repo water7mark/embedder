@@ -34,7 +34,8 @@ const std::string cosine_file("C:/Users/youhei/Desktop/research_all/research_dat
 
 //parameter
 const std::string basis_read_file("C:/IHC_videos/xxx");
-const std::string basis_write_file("C:/Users/youhei/Desktop/research_all/research_data/mp4_embedded_videos/motion_vector/xxx_d1");
+const std::string basis_write_file("C:/Users/youhei/Desktop/research_all/research_data/mp4_embedded_videos/motion_vector/xxx_d1_ver1");
+const std::string basis_motion_vector_file("C:/share_ubuntu/output/xxx_d1.csv");       // 動きベクトルの元ファイル
 const int num_embedframe = 20; //1回当たりの処理で埋め込むフレーム数(偶数)
 const double delta = 1; //埋め込み強度
 
@@ -49,7 +50,7 @@ const int FRAME_height = 1080; // フレームの縦の長さ
 const int block_size = 8;  //  DCTブロックのサイズ
 const int motionvector_block_size = 16; // 動きベクトルのグリッドブロックのサイズ
 
-const std::string basis_motion_vector_file("C:/share_ubuntu/output/xxx_d1.csv");       // 動きベクトルの元ファイル
+
 
 
 class mv_class {    // 元データをとりあえず整理して格納する用のクラス
