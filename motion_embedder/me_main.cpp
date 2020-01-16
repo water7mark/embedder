@@ -13,9 +13,9 @@ int main(int argc, char *argv[])
 		log_write(read_file, write_file);
 		str_checker(read_file, write_file);
 
-		if (!overwrite_check(write_file)) {
-			continue;
-		}
+		//if (!overwrite_check(write_file)) {
+		//	continue;
+		//}
 
 		cv::VideoCapture cap;
 		cv::VideoWriter writer;
@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
 		int framenum;
 		cv::Size size;
 
-		std::vector<mv_class> mv_all;        // 元ファイルから読み込んだ動きベクトルのデータを整理してすべて格納
+
 
 		//初期化
 		init_me(&cap, &embed, &size, &ofs, &writer, read_file, write_file, motion_vector_file, num_embedframe);
@@ -33,32 +33,27 @@ int main(int argc, char *argv[])
 
 		do {
 			int i;
-			std::vector<cv::Mat> planes(3), planes2(3);  // 一時的に，YCrCbを格納する(同一フレームのYCrCbかBGRの3要素を格納している)
+			std::vector<cv::Mat> planes(3, cv::Mat::zeros(cv::Size(FRAME_width / 8, FRAME_height / 8), CV_8UC1)), planes2(3, cv::Mat::zeros(cv::Size(FRAME_width / 8, FRAME_height / 8), CV_8UC1));  // 一時的に，YCrCbを格納する(同一フレームのYCrCbかBGRの3要素を格納している)
 			std::vector<cv::Mat> luminance;               // 輝度値を一定のフレーム分格納する
 			std::vector<cv::Mat> dst_luminance;           // 埋め込みを行ったフレーム分の輝度値を格納する
 			std::vector<cv::Mat> Cr;
 			std::vector<cv::Mat> Cb;
 			cv::Mat frame_BGR(size, CV_8UC3), frame_BGR2(size, CV_8UC3);
 			cv::Mat frame_YCrCb(size, CV_8UC3), frame_YCrCb2(size, CV_8UC3);
-			std::vector<cv::Mat> check_motion_array;
-
-			//timer startf
-			meter.start();
 
 			//300f毎に別の動画像として保存
-			//if (cap.get(CV_CAP_PROP_POS_FRAMES) == 300) {
-			//	writer.release();
-			//	if (read_file.find("avi") != std::string::npos) {
-			//		writer = writer_open(write_file + "_2.avi", cap);
-			//	}
-
-			//}
-			//if (cap.get(CV_CAP_PROP_POS_FRAMES) == 600) {
-			//	writer.release();
-			//	if (read_file.find("avi") != std::string::npos) {
-			//		writer = writer_open(write_file + "_3.avi", cap);
-			//	}
-			//}
+			if (cap.get(CV_CAP_PROP_POS_FRAMES) == 300) {
+				writer.release();
+				if (read_file.find("avi") != std::string::npos) {
+					writer = writer_open(write_file + "_2.avi", cap);
+				}
+			}
+			if (cap.get(CV_CAP_PROP_POS_FRAMES) == 600) {
+				writer.release();
+				if (read_file.find("avi") != std::string::npos) {
+					writer = writer_open(write_file + "_3.avi", cap);
+				}
+			}
 
 			//preprocessing
 			for (i = 0; i < num_embedframe; i++) {
@@ -77,11 +72,11 @@ int main(int argc, char *argv[])
 				planes.clear();
 			}
 
+			std::vector<mv_class> mv_all(num_embedframe);        // 元ファイルから読み込んだ動きベクトルのデータを整理してすべて格納
+
 			//埋め込み処理(num_embeddframe分だけ処理を行う)
 			motion_embedder(luminance, dst_luminance, embed, cap.get(CV_CAP_PROP_POS_FRAMES) - num_embedframe, num_embedframe, delta,motion_vector_file, mv_all);
 
-			//timer end
-			meter.stop();
 
 			//double psnr[num_embedframe];
 			for (i = 0; i < num_embedframe; i++) {
@@ -101,8 +96,6 @@ int main(int argc, char *argv[])
 			}
 
 			std::cout << "frame" << cap.get(CV_CAP_PROP_POS_FRAMES) << std::endl;
-			meter.reset();
-			meter.start();
 
 			std::vector<mv_class>().swap(mv_all);
 

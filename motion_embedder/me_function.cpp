@@ -25,7 +25,7 @@ void init_me(cv::VideoCapture* cap, std::vector<char>* embed, cv::Size* size, st
 	*embed = set_embeddata(embed_file);
 	*cap = capture_open(read_file);
 	//	*writer = mp4_writer_open(write_file + ".mp4", *cap);  // mp4なのでデータ量が小さいため分割の必要はない．．
-	*writer = mp4_writer_open(write_file + ".mp4", *cap);
+	*writer = writer_open(write_file + ".avi", *cap);
 	size->width = cap->get(CV_CAP_PROP_FRAME_WIDTH);
 	size->height = cap->get(CV_CAP_PROP_FRAME_HEIGHT);
 }
@@ -62,84 +62,6 @@ std::vector<char> set_embeddata(const std::string filename) {
 	return embed;
 }
 
-void set_motionvector(const std::string motion_vector_file, std::vector<mv_class>& mv_all, int cframe) {
-	// ファイル内のデータが膨大すぎるため、埋め込み時に適宜この関数を呼び出して、その都度ファイルからデータを読み出す
-	// 埋め込む先頭フレーム(cframe)までファイル読み込みを飛ばしてからnum_embedframe分データを取得する
-
-	std::ifstream ifs;
-	ifs.open(motion_vector_file);
-	if (ifs.fail()) {
-		std::cerr << "can't open motion vector data file\n";
-		std::getchar();
-		exit(3);
-	}
-
-	std::string str;
-	std::string cframe_str = std::to_string(cframe);
-	cframe_str.insert(0, "pts=");
-	while (str.find(cframe_str) == std::string::npos) {   //pts=cframeとなるまで飛ばす
-		getline(ifs, str, ' ');
-	}
-
-
-	// 書き換え必須
-	for (int pts = 1; pts < num_embedframe && !ifs.eof();) {
-		mv_class temp_class;
-		int temp_start;
-		std::string temp_str;
-		int temp_count = 0;
-
-		// 初期化
-		temp_class.frame_index = -1;
-		temp_class.x_vector = cv::Mat::zeros(cv::Size(FRAME_width / motionvector_block_size, FRAME_height / motionvector_block_size), MV_DETA_SIZE);
-		temp_class.y_vector = cv::Mat::zeros(cv::Size(FRAME_width / motionvector_block_size , FRAME_height / motionvector_block_size), MV_DETA_SIZE);
-
-
-		getline(ifs, str, ' ');
-
-		if (str.find("pts") != std::string::npos) {          // ptsが出れば、1フレームとみなす 
-			pts++;
-		}
-		else if (str.find("frame_index") != std::string::npos) {
-			temp_start = str.find("frame_index");
-			temp_str = str.substr(temp_start + 12, str.length());        //動きベクトルファイル内では、frame_index=数字になっているという前提
-			temp_class.frame_index = atoi(temp_str.c_str());
-		}
-		else if (str.find("shape") != std::string::npos) {
-			temp_start = str.find("shape");
-		//	temp_str = str.substr(temp_start + 13, str.length());    // origin=video(若しくはdummy)となっている仮定 
-
-			for (int i = 0; i < 120 * matrix_height; i++) {
-				getline(ifs, str, '\t');
-
-				if (i == 0) {
-					temp_str = str.substr(13, 1);
-				}
-				else if (i % 120 == 0) {   // 行の切れ目の\nを削除
-					temp_str = str.substr(1, 1);
-				}
-				else {
-					temp_str = str.substr(0, 1);
-				}
-
-				if (i < 120 * matrix_height / 2) {
-					temp_class.x_vector.at<MV_DETA_TYPE>(i / 120, i % 120) = atoi(temp_str.c_str());
-				}
-				else {
-					temp_class.y_vector.at<MV_DETA_TYPE>((i /2) / 120, (i/2) % 120) = atoi(temp_str.c_str());
-				}
-
-				if (i == 120 * matrix_height - 1) {
-					int aaa;
-					aaa = 0;
-				}
-			}
-		}
-
-		mv_all.push_back(temp_class);
-	}
-}
-
 cv::VideoCapture capture_open(const std::string read_file) {
 	cv::VideoCapture cap(read_file);
 	if (!cap.isOpened()) {
@@ -168,6 +90,113 @@ cv::VideoWriter mp4_writer_open(const std::string write_file, cv::VideoCapture c
 	return writer;
 }
 
+void set_motionvector(const std::string motion_vector_file, std::vector<mv_class>& mv_all, int cframe) {
+	// ファイル内のデータが膨大すぎるため、埋め込み時に適宜この関数を呼び出して、その都度ファイルからデータを読み出す
+	// 埋め込む先頭フレーム(cframe)までファイル読み込みを飛ばしてからnum_embedframe分データを取得する
+
+	std::ifstream ifs;
+	ifs.open(motion_vector_file);
+	if (ifs.fail()) {
+		std::cerr << "can't open motion vector data file\n";
+		std::getchar();
+		exit(3);
+	}
+
+	std::string str;
+	std::string cframe_str = std::to_string(cframe);
+	cframe_str.insert(0, "pts=");
+	while (str.find(cframe_str) == std::string::npos) {   //pts=cframeとなるまで飛ばす
+		getline(ifs, str, ' ');
+	}
+
+
+	// 書き換え必須
+	mv_class temp_class;
+	// 初期化
+	temp_class.frame_index = -1;
+	temp_class.x_vector = cv::Mat::zeros(cv::Size(FRAME_width / motionvector_block_size, FRAME_height / motionvector_block_size), MV_DETA_SIZE);
+	temp_class.y_vector = cv::Mat::zeros(cv::Size(FRAME_width / motionvector_block_size, FRAME_height / motionvector_block_size), MV_DETA_SIZE);
+
+	std::vector<int> debug_array(120);// debug用
+
+	for (int pts = 1; pts < num_embedframe + 1 && !ifs.eof();) {
+		int temp_start;
+		std::string temp_str;
+		int temp_count = 0;
+
+
+		getline(ifs, str, ' ');
+
+		//if (str.find("pts=9") != std::string::npos) {  // debug用
+		//	int abc;
+		//	abc = 1;
+		//}
+
+		if (str.find("pts") != std::string::npos) {          // ptsが出れば、1フレームとみなす 
+			pts++;
+		}
+		else if (str.find("frame_index") != std::string::npos) {
+			temp_start = str.find("frame_index");
+			temp_str = str.substr(temp_start + 12, str.length());        //動きベクトルファイル内では、frame_index=数字になっているという前提
+			if (atoi(temp_str.c_str()) == -1) {
+				temp_class.frame_index = atoi(temp_str.c_str());
+			}
+			else {
+				temp_class.frame_index = pts - 1 + cframe;
+			}
+		}
+		else if (str.find("shape") != std::string::npos) {
+			temp_start = str.find("shape");
+
+			for (int i = 0; i < 120 * matrix_height; i++) {
+				getline(ifs, str, '\t');
+
+				if (i == 0) {
+					temp_str = str.substr(13, str.length() - 13);             //この行大丈夫かな・・・・
+				}
+				else if (i % 120 == 0) {   // 行の切れ目の\nを削除
+					temp_str = str.substr(1, str.length() - 1);              // この行ダイジョブかな・・
+				}
+				else {
+					temp_str = str;
+				}
+
+				if (i < 120 * matrix_height / 2) {
+					temp_class.x_vector.at<MV_DETA_TYPE>(i / 120, i % 120) = atoi(temp_str.c_str());
+				}
+				else {
+					temp_class.y_vector.at<MV_DETA_TYPE>((i / 2) / 120, (i / 2) % 120) = atoi(temp_str.c_str());
+				}
+			}
+
+			//int debug_num = 0;
+			//if (pts == 10) {
+			//	debug_num = temp_class.x_vector.at<MV_DETA_TYPE>(0, 19);
+			//	std::cout << temp_class.x_vector.at<MV_DETA_TYPE>(0, 19) << std::endl;
+			//}
+			
+			// 深いコピー
+			mv_all[pts - 1].frame_index = temp_class.frame_index;
+			mv_all[pts - 1].x_vector = temp_class.x_vector.clone();
+			mv_all[pts - 1].y_vector = temp_class.y_vector.clone();
+
+
+			// 再度初期化
+			temp_class.frame_index = -1;
+			temp_class.x_vector = cv::Mat::zeros(cv::Size(FRAME_width / motionvector_block_size, FRAME_height / motionvector_block_size), MV_DETA_SIZE);
+			temp_class.y_vector = cv::Mat::zeros(cv::Size(FRAME_width / motionvector_block_size, FRAME_height / motionvector_block_size), MV_DETA_SIZE);
+
+			//if (pts == 10) {
+			//	debug_num = mv_all[pts - 1].x_vector.at<MV_DETA_TYPE>(0, 19);
+			//	std::cout << mv_all[pts - 1].x_vector.at<MV_DETA_TYPE>(0, 19) << std::endl;
+			//}
+		}
+	}
+
+	//for (int i = 0; end(debug_array) - begin(debug_array); i++) {
+	//	std::cout << debug_array[i] << std::endl;
+	//}
+}
 
 cv::Mat filter(cv::Mat luminance) {                           // ブロック内の輝度値をならす(輝度値の平均化)
 	cv::Mat dst_luminance(luminance.size(), CV_32F);
@@ -207,13 +236,23 @@ float median(std::vector<float> v) {     // 中央値を返す
 void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_luminance, std::vector<char> embed, int cframe, int num_embedframe, int delta, std::string motion_vector_file, std::vector<mv_class>& mv_all) {
 	std::vector<cv::Mat> means;  //ブロック単位の平均輝度値を保持
 	std::vector<cv::Mat> deviations;  //ブロック単位の平均値からの偏差を保持
-	cv::Mat m_means = cv::Mat::zeros(1920, 1080, CV_32F);  //mフレーム間での「ブロック単位の平均値」の平均値を保持
+	cv::Mat m_means = cv::Mat::zeros(FRAME_width, FRAME_height, CV_32F);  //mフレーム間での「ブロック単位の平均値」の平均値を保持
 	std::vector<cv::Mat> m_deviations;  //mフレーム間での「ブロック単位の平均値」の平均値からの偏差を保持
 	int x, y;
 
 	// ファイルからデータ取得
 	set_motionvector(motion_vector_file, mv_all, cframe);
 
+	/*int y_test = get_next_pos(mv_all, 9, 0, 8).first;
+	int x_test = get_next_pos(mv_all, 9, 0, 8).second;
+
+	std::cout << "x is " << x_test << "and " << y_test << std::endl;
+
+	std::vector<char> temp(100);
+	for (int i = 0; i < 100; i++) {
+		temp[i] = mv_all[9].x_vector.at<char>(0, i);
+		std::cout << temp[i] << std::endl;
+	}*/
 
 	// means, m_means , deviations, variance の作成
 	for (int i = 0; i < num_embedframe; i++) {    //  各画素の偏差とブロック内平均輝度値を求める
@@ -248,21 +287,27 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 	std::vector<cv::Mat> comp(20, cv::Mat::zeros(cv::Size(FRAME_width /8, FRAME_height/8), CV_8UC1));
 
 	// 先に動きベクトルの処理
-	for (int i = 0; i < num_embedframe; i++)
-		for (y = 0; y < FRAME_height / block_size; y ++) {
+	for (int i = 0; i < num_embedframe - 1; i++)         // 次のフレームを予測するので最後のフレームは予測の必要がない
+		for (y = 0; y < FRAME_height / block_size; y++) {
 			for (x = 0; x < FRAME_width / block_size; x++) {{
 					if (Is_there_mv(mv_all, cframe + i)) {  // 現在のフレーム番号を与えると動きベクトルが出力されているか返す関数	
 
+						if (i == 9 && y == 18) {          // debug
+							int avc;
+							avc = 1;
+						}
+
 						std::pair<int, int> next_pixel = get_next_pos(mv_all, cframe + i, y, x);    //フレーム番号とptsがごっちゃになっていないか確認する(現在のフレームを返せばいいと思われ)
 
+						
 						Is_stop[i].at<unsigned char>(y, x) = 1;
 						Is_stop[i + 1].at<unsigned char>(next_pixel.first, next_pixel.second) = -1;
 						Is_move[i].at<unsigned char>(y, x) = 1;
 					}
 					else {
 						// 継続条件を満たさないようにしてforを2つ抜ける
-						y = FRAME_height / 8 - 1;
-						x = FRAME_width / 8 - 1;
+						y = FRAME_height / block_size - 1;
+						x = FRAME_width / block_size - 1;
 					}
 				}
 			}
@@ -270,7 +315,6 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 
 	//↑途中で上書きされたとしてもその情報は，lumi_mapには載らない(でも，外側のループをnum_embedframeにすれば，)
 
-	
 	int num;          // 現在の画素に割り当てるべき透かしビットを格納
 	// lumi_map求める
 	for (y = 0; y < FRAME_height / block_size; y++) {
@@ -332,6 +376,7 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 			for (int i = 0; i < num_embedframe; i++) {
 				var_lumi += pow((lumi[i] - ave_lumi), 2);
 			}
+			var_lumi / num_embedframe;   // 分散の定義式:(要素-平均)^2 /要素数
 
 			if (sum_stop < 0) {
 				continue;
@@ -496,14 +541,20 @@ std::pair<int, int > get_next_pos(std::vector<mv_class>& mv_all, int frame, int 
 		}
 	}
 
-	next_pos = std::make_pair(btop(mv_all[frame % num_embedframe].y_vector.at<MV_DETA_TYPE>(bl_y, bl_x)) + y, btop(mv_all[frame % num_embedframe].x_vector.at<MV_DETA_TYPE>(bl_y, bl_x)) + x);
+	int temp_y = mv_all[frame % num_embedframe].y_vector.at<MV_DETA_TYPE>(bl_y, bl_x);
+	int temp_x = mv_all[frame % num_embedframe].x_vector.at<MV_DETA_TYPE>(bl_y, bl_x);
+	
+
+
+	// 負の数なら反転させてプラスにしないといけない！？？！とりあえず，例を見て確認しよう
+	next_pos = std::make_pair(y + btop(temp_y), x + btop(temp_x));
 
 	return next_pos;
 }
 
 bool Is_there_mv(std::vector<mv_class> &mv_all, int frame) {  // ダミー場合はfalseを返す
 
-	if (mv_all[frame % num_embedframe ].frame_index == -1) {
+	if (mv_all[frame % num_embedframe].frame_index == -1) {
 		return false;
 	}
 	else {

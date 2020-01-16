@@ -78,7 +78,15 @@ bool overwrite_check(std::string write_file) {       // ‚¤‚Á‚©‚èƒf[ƒ^‚ğã‘‚«‚µ
 
 	if (ifs.is_open()) {
 		std::cout << "error: overwrite::" << write_file << std::endl;
-		getchar();
+		if (getchar() == 'j') {
+
+		}
+
+		if (getchar() == 'u') {
+			return true;
+		}
+
+
 		return false;
 	}
 

@@ -26,7 +26,7 @@
 using comp = std::complex<double>;
 
 
-#define PROJECT_LOOP 5
+#define PROJECT_LOOP 1
 
 const std::string log_file("C:/Users/youhei/Desktop/research_all/research_data/log_all.txt");
 const std::string embed_file("C:/Users/youhei/Desktop/research_all/research_data/m2_embednum16x9_one16.txt"); 
