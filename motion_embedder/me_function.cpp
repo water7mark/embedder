@@ -243,17 +243,6 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 	// ファイルからデータ取得
 	set_motionvector(motion_vector_file, mv_all, cframe);
 
-	/*int y_test = get_next_pos(mv_all, 9, 0, 8).first;
-	int x_test = get_next_pos(mv_all, 9, 0, 8).second;
-
-	std::cout << "x is " << x_test << "and " << y_test << std::endl;
-
-	std::vector<char> temp(100);
-	for (int i = 0; i < 100; i++) {
-		temp[i] = mv_all[9].x_vector.at<char>(0, i);
-		std::cout << temp[i] << std::endl;
-	}*/
-
 	// means, m_means , deviations, variance の作成
 	for (int i = 0; i < num_embedframe; i++) {    //  各画素の偏差とブロック内平均輝度値を求める
 		cv::Mat temp_luminance = luminance[i].clone();
@@ -284,24 +273,18 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 
 	std::vector<cv::Mat> result_lumi(20, cv::Mat::zeros(cv::Size(FRAME_width / 8, FRAME_height/ 8), CV_32F));
 	std::vector<cv::Mat> lumi_map(20, cv::Mat::zeros(cv::Size(FRAME_width / 8, FRAME_height / 8), CV_32F));    // meansが32Fであるから型を合わせる．
-	std::vector<cv::Mat> comp(20, cv::Mat::zeros(cv::Size(FRAME_width /8, FRAME_height/8), CV_8UC1));
+	std::vector<cv::Mat> comp(20, cv::Mat::zeros(cv::Size(FRAME_width /8, FRAME_height/8), CV_8UC1));        // 計算結果がresultに格納されているなら非ゼロを返す
 
 	// 先に動きベクトルの処理
-	for (int i = 0; i < num_embedframe - 1; i++)         // 次のフレームを予測するので最後のフレームは予測の必要がない
+	for (int i = num_embedframe - 1; i > 0 ; i--)        // この辺の要素数などの兼ね合いをもう一度確かめよう 2020 1_ 17
 		for (y = 0; y < FRAME_height / block_size; y++) {
 			for (x = 0; x < FRAME_width / block_size; x++) {{
 					if (Is_there_mv(mv_all, cframe + i)) {  // 現在のフレーム番号を与えると動きベクトルが出力されているか返す関数	
-
-						if (i == 9 && y == 18) {          // debug
-							int avc;
-							avc = 1;
-						}
-
-						std::pair<int, int> next_pixel = get_next_pos(mv_all, cframe + i, y, x);    //フレーム番号とptsがごっちゃになっていないか確認する(現在のフレームを返せばいいと思われ)
+						std::pair<int, int> back_pixel = get_back_pos(mv_all, cframe + i, y, x);    //フレーム番号とptsがごっちゃになっていないか確認する(現在のフレームを返せばいいと思われ)
 
 						
 						Is_stop[i].at<unsigned char>(y, x) = 1;
-						Is_stop[i + 1].at<unsigned char>(next_pixel.first, next_pixel.second) = -1;
+						Is_stop[i - 1].at<unsigned char>(back_pixel.first, back_pixel.second) = -1;
 						Is_move[i].at<unsigned char>(y, x) = 1;
 					}
 					else {
@@ -315,6 +298,8 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 
 	//↑途中で上書きされたとしてもその情報は，lumi_mapには載らない(でも，外側のループをnum_embedframeにすれば，)
 
+
+	// 20フレームの最後から順に動きベクトルを調べて20個の輝度を確保する
 	int num;          // 現在の画素に割り当てるべき透かしビットを格納
 	// lumi_map求める
 	for (y = 0; y < FRAME_height / block_size; y++) {
@@ -322,27 +307,27 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 			int temp_y = y;
 			int temp_x = x;
 
-			lumi_map[0].at<float>(temp_y, temp_x) = means[0].at<float>(temp_y *  block_size, temp_x *  block_size);
-			comp[0].at<unsigned char>(temp_y, temp_x) = 1;
+			lumi_map[num_embedframe - 1].at<float>(temp_y, temp_x) = means[num_embedframe - 1].at<float>(temp_y *  block_size, temp_x *  block_size);
+			comp[num_embedframe- 1].at<unsigned char>(temp_y, temp_x) = 1;
 
 
 			int jump_flg = 0;   // 移動した際に移動先のIsstopに-1をつける．そのため最初のifで通った直後に次のループのelseifに引っかからないようにするため
-			for (int i = 0; i < num_embedframe - 1; i++) {
+			for (int i = num_embedframe - 1; i > 0; i--) {
 				if (Is_stop[i].at<unsigned char>(temp_y, temp_x) == 1) {     // 他の画素位置に移動しているなら
-					std::pair<int, int> next_point;     
-					next_point = get_next_pos(mv_all, cframe + i , temp_y, temp_x);
-					lumi_map[i + 1].at<float>(y, x) = means[i + 1].at<float>(next_point.first *  block_size, next_point.second *  block_size);
-					comp[i + 1].at<unsigned char>(next_point.first, next_point.second) = 1;
-					temp_y = next_point.first;
-					temp_x = next_point.second;
+					std::pair<int, int> back_point;     
+					back_point = get_back_pos(mv_all, cframe + i , temp_y, temp_x);
+					lumi_map[i - 1].at<float>(y, x) = means[i - 1].at<float>(back_point.first *  block_size, back_point.second *  block_size);
+					comp[i - 1].at<unsigned char>(back_point.first, back_point.second) = 1;
+					temp_y = back_point.first;
+					temp_x = back_point.second;
 					jump_flg = 1;
 				}
 				else if (Is_stop[i].at<unsigned char>(temp_y, temp_x) == -1 && jump_flg != 1) {       // 移動せず上書きされたならlumi_mapには何も読み込まない
 					continue;
 				}
 				else { 
-					lumi_map[i + 1].at<float>(y, x) = means[i + 1].at<float>(temp_y *  block_size, temp_x *  block_size);
-					comp[i + 1].at<unsigned char>(temp_y, temp_x) = 1;
+					lumi_map[i - 1].at<float>(y, x) = means[i - 1].at<float>(temp_y *  block_size, temp_x *  block_size);
+					comp[i - 1].at<unsigned char>(temp_y, temp_x) = 1;
 					jump_flg = 0;
 				}
 			}
@@ -378,7 +363,7 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 			}
 			var_lumi / num_embedframe;   // 分散の定義式:(要素-平均)^2 /要素数
 
-			if (sum_stop < 0) {
+			if (sum_stop < 0) {    //　途中で上書きされた場合
 				continue;
 			}
 			else {              // 20フレーム分画素がある場合
@@ -397,13 +382,13 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 
 
 				// 埋め込んだ結果をresult_lumiに格納
-				result_lumi[0].at<float>(y, x) = lumi[0];
+				result_lumi[num_embedframe - 1].at<float>(y, x) = lumi[num_embedframe - 1];
 				temp_y = y;
 				temp_x = x;
-				for (int i = 0; i < num_embedframe - 1; i++) {
-					std::pair<int, int> next_point;
-					next_point = get_next_pos(mv_all, cframe + i, temp_y, temp_x);
-					result_lumi[i + 1].at<float>(temp_y, temp_x) = lumi[i + 1];
+				for (int i = num_embedframe - 1; i > 0 ; i--) {
+					std::pair<int, int> back_point;
+					back_point = get_back_pos(mv_all, cframe + i, temp_y, temp_x);
+					result_lumi[i - 1].at<float>(temp_y, temp_x) = lumi[i - 1];
 				}
 			}
 		}
@@ -524,33 +509,34 @@ int btop(int block_pos) {
 	return block_pos * motionvector_block_size / block_size;
 }
 
-std::pair<int, int > get_next_pos(std::vector<mv_class>& mv_all, int frame, int y, int x) {
+
+// mv_all[未来の座標] = 未来の座標 - 過去の座標
+std::pair<int, int > get_back_pos(std::vector<mv_class>& mv_all, int frame, int y, int x) {
 	// フレーム番号と座標を与えるとその次の座標を返す)
 	// 何も動いていなければ元の座標を返す
 	int bl_y = ptob(y);
 	int bl_x = ptob(x);
 
-	std::pair<int, int> next_pos;
+	std::pair<int, int> back_pos;
 
 	if (motionvector_block_size == 16) {       // フレームの縦幅が1080の時はマクロブロックサイズ16では割り切れず，8画素分余る．その場合，そのまま座標を返す
 		if (y == 134) {
-			next_pos.first = y;
-			next_pos.second = x;   
+			back_pos.first = y;
+			back_pos.second = x;
 
-			return next_pos;
+			return back_pos;
 		}
 	}
 
+	
 	int temp_y = mv_all[frame % num_embedframe].y_vector.at<MV_DETA_TYPE>(bl_y, bl_x);
 	int temp_x = mv_all[frame % num_embedframe].x_vector.at<MV_DETA_TYPE>(bl_y, bl_x);
-	
 
+	back_pos = std::make_pair(y - btop(temp_y), x - btop(temp_x));
 
-	// 負の数なら反転させてプラスにしないといけない！？？！とりあえず，例を見て確認しよう
-	next_pos = std::make_pair(y + btop(temp_y), x + btop(temp_x));
-
-	return next_pos;
+	return back_pos;
 }
+
 
 bool Is_there_mv(std::vector<mv_class> &mv_all, int frame) {  // ダミー場合はfalseを返す
 

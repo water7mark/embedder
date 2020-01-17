@@ -80,7 +80,7 @@ cv::VideoWriter mp4_writer_open(const std::string write_file, cv::VideoCapture c
 
 // add
 void set_motionvector(const std::string motion_vector_file, std::vector<mv_class>& mv_all, int cframe);
-std::pair<int, int > get_next_pos(std::vector<mv_class>& mv_all, int frame, int y, int x);
+std::pair<int, int > get_back_pos(std::vector<mv_class>& mv_all, int frame, int y, int x);
 bool Is_there_mv(std::vector<mv_class> &mv_all, int frame);
 
 // common
