@@ -243,6 +243,16 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 	// ファイルからデータ取得
 	set_motionvector(motion_vector_file, mv_all, cframe);
 
+	// debug
+	//for (int i = 0; i < 1; i++) {
+	//	for (int k = 0; k < block_size; k++) {
+	//		for (int l = 0; l < block_size; l++) {
+	//			std::cout << +luminance[i].at<unsigned char>(k, l) << std::endl;
+	//		}
+	//	}
+	//}
+
+
 	// means, m_means , deviations, variance の作成
 	for (int i = 0; i < num_embedframe; i++) {    //  各画素の偏差とブロック内平均輝度値を求める
 		cv::Mat temp_luminance = luminance[i].clone();
@@ -282,7 +292,6 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 					if (Is_there_mv(mv_all, cframe + i)) {  // 現在のフレーム番号を与えると動きベクトルが出力されているか返す関数	
 						std::pair<int, int> back_pixel = get_back_pos(mv_all, cframe + i, y, x);    //フレーム番号とptsがごっちゃになっていないか確認する(現在のフレームを返せばいいと思われ)
 
-						
 						Is_stop[i].at<unsigned char>(y, x) = 1;
 						Is_stop[i - 1].at<unsigned char>(back_pixel.first, back_pixel.second) = -1;
 						Is_move[i].at<unsigned char>(y, x) = 1;
@@ -343,7 +352,7 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 	std::vector<float> lumi(20, 0);         //　lumi_mapの各ブロックの輝度値を取り出して，計算する際にfloatにする必要がある
 	int sum_stop;
 	float ave_lumi = 0;   
-	float var_lumi  =0;
+	float var_lumi = 0;
 
 	for (y = 0; y < FRAME_height / block_size; y ++) {
 		for (x = 0; x < FRAME_width / block_size; x++) {
@@ -351,7 +360,7 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 			int temp_y = y;
 			int temp_x = x;
 
-			for (int i = 0; i < num_embedframe; i++) {
+			for (int i = num_embedframe - 1; i >= 0; i--) {
 				lumi[i] = lumi_map[i].at<float>(y, x);
 				sum_stop = Is_stop[i].at<unsigned char>(temp_y, temp_x);       // ここって，移動した先で上書きされても大丈夫？？あとで確認
 				ave_lumi += lumi[i];
@@ -405,20 +414,20 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 			}
 		}
 
-
+		float temp_debug;
 		for (y = 0; y < FRAME_height / block_size; y++) {
 			for (x = 0; x < FRAME_width / block_size; x++) {
-				
+
 				for (int m = 0; m < block_height; m++) {
 					for (int n = 0; n < block_width; n++) {
-						deviations[i].at<float>(y + m, x + n) += result_lumi[i].at<float>(y , x);
+						deviations[i].at<float>(y * block_height + m, x * block_width + n) += result_lumi[i].at<float>(y , x);
 					}
 				}
 			}
 		}
 		dst_luminance.push_back(deviations[i]);
 		dst_luminance[i].convertTo(dst_luminance[i], CV_8UC1);
-		//cv::imshow("0", dst_luminance[i]);
+	//	cv::imshow("0", dst_luminance[i]);
 		//cv::waitKey(200);	
 	}
 }
@@ -506,7 +515,7 @@ int ptob(int pixel_pos) {
 }
 
 int btop(int block_pos) {
-	return block_pos * motionvector_block_size / block_size;
+	return block_pos / motionvector_block_size * motionvector_block_size / block_size;
 }
 
 
@@ -532,7 +541,17 @@ std::pair<int, int > get_back_pos(std::vector<mv_class>& mv_all, int frame, int 
 	int temp_y = mv_all[frame % num_embedframe].y_vector.at<MV_DETA_TYPE>(bl_y, bl_x);
 	int temp_x = mv_all[frame % num_embedframe].x_vector.at<MV_DETA_TYPE>(bl_y, bl_x);
 
+
 	back_pos = std::make_pair(y - btop(temp_y), x - btop(temp_x));
+
+
+	// 現状のエラーをとりあえず改善するため
+	if (back_pos.first < 0 || back_pos.first >= (FRAME_height / block_size)) {
+		back_pos.first = y;
+	}
+	if (back_pos.second < 0 || back_pos.second >= (FRAME_width / block_size)) {
+		back_pos.second = x;
+	}
 
 	return back_pos;
 }

@@ -108,9 +108,9 @@ void change_filename(std::string& read_file,  std::string& write_file, std::stri
 	write_file.replace(change_point, 3, read_array[loop_count - 1]);
 
 	
-	// motion_vectorの操作
-	change_point = (int)motion_vector_file.find("xxx");
-	motion_vector_file.replace(change_point, 3, mv_label[loop_count - 1]);
+	//// motion_vectorの操作
+	//change_point = (int)motion_vector_file.find("xxx");
+	//motion_vector_file.replace(change_point, 3, mv_label[loop_count - 1]);
 
 	// コンソール出力
 	std::cout << read_file  << std::endl;

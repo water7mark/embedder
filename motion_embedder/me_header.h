@@ -35,7 +35,7 @@ const std::string cosine_file("C:/Users/youhei/Desktop/research_all/research_dat
 //parameter
 const std::string basis_read_file("C:/IHC_videos/xxx");
 const std::string basis_write_file("C:/Users/youhei/Desktop/research_all/research_data/mp4_embedded_videos/motion_vector/xxx_d1_ver1");
-const std::string basis_motion_vector_file("C:/share_ubuntu/output/xxx_d1.csv");       // 動きベクトルの元ファイル
+const std::string basis_motion_vector_file("C:/share_ubuntu/output/test_no_moving_30sec.csv");       // 動きベクトルの元ファイル
 const int num_embedframe = 20; //1回当たりの処理で埋め込むフレーム数(偶数)
 const double delta = 1; //埋め込み強度
 
