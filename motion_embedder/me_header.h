@@ -26,18 +26,19 @@
 using comp = std::complex<double>;
 
 
-#define PROJECT_LOOP 1
+#define PROJECT_LOOP 5
 
 const std::string log_file("C:/Users/youhei/Desktop/research_all/research_data/log_all.txt");
 const std::string embed_file("C:/Users/youhei/Desktop/research_all/research_data/m2_embednum16x9_one16.txt"); 
 const std::string cosine_file("C:/Users/youhei/Desktop/research_all/research_data/cosine_table.txt");
 
 //parameter
+
 const std::string basis_read_file("C:/IHC_videos/xxx");
-const std::string basis_write_file("C:/Users/youhei/Desktop/research_all/research_data/mp4_embedded_videos/motion_vector/xxx_d1_ver1");
-const std::string basis_motion_vector_file("C:/share_ubuntu/output/test_no_moving_30sec.csv");       // 動きベクトルの元ファイル
+const std::string basis_write_file("C:/Users/youhei/Desktop/research_all/research_data/mp4_embedded_videos/motion_vector/me_xxx_d3");
+const std::string basis_motion_vector_file("C:/share_ubuntu/output/xxx_d1.csv");       // 動きベクトルの元ファイル
 const int num_embedframe = 20; //1回当たりの処理で埋め込むフレーム数(偶数)
-const double delta = 1; //埋め込み強度
+const double delta = 3; //埋め込み強度
 
 const int BG_width = 16;  // ブロック群の横の長さ
 const int BG_height = 9;  // ブロック群の縦の長さ

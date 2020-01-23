@@ -101,16 +101,41 @@ void change_filename(std::string& read_file,  std::string& write_file, std::stri
 
 	// read_fileの操作(loop_countに応じてファイルの名前の動画のタイトル部分を変更)
 	change_point = (int)read_file.find("xxx");
-	read_file.replace(change_point, 3, mp4_read_array[loop_count - 1]);
+	if (change_point == std::string::npos) {   // xxxが見つからないなら
+		if (read_file.find("test") != std::string::npos) {
 
-	// write_fileの操作
-	change_point = (int)write_file.find("xxx");
-	write_file.replace(change_point, 3, read_array[loop_count - 1]);
+		}
+		else {
+			std::cout << "read_file dont have xxx string.\n";
+			std::getchar();
+			exit(4);
+		}
+	}
+	else {
+		read_file.replace(change_point, 3, mp4_read_array[loop_count - 1]);
+	}
+
+
+	 //write_fileの操作
+	change_point = write_file.find("xxx");
+	if (change_point == std::string::npos) {   // xxxが見つからないなら
+		if (write_file.find("test") != std::string::npos) {
+
+		}
+		else {
+			std::cout << "write_file dont have xxx string.\n";
+			std::getchar();
+			exit(4);
+		}
+	}
+	else {
+		write_file.replace(change_point, 3, read_array[loop_count - 1]);
+	}
 
 	
-	//// motion_vectorの操作
-	//change_point = (int)motion_vector_file.find("xxx");
-	//motion_vector_file.replace(change_point, 3, mv_label[loop_count - 1]);
+	// motion_vectorの操作
+	change_point = (int)motion_vector_file.find("xxx");
+	motion_vector_file.replace(change_point, 3, mv_label[loop_count - 1]);
 
 	// コンソール出力
 	std::cout << read_file  << std::endl;
