@@ -250,12 +250,6 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 	// 作成終了
 
 
-	//std::vector<cv::Mat>Is_stop(20, cv::Mat::zeros(cv::Size(FRAME_width / 8, FRAME_height / 8), CV_8UC1));     // 当該画素が上書きされるか判定，上書きされたフレームで-1，その画素が再び他の画素へ移動したならそのフレームで1を格納する
-	//std::vector<cv::Mat>Is_move(20, cv::Mat::zeros(cv::Size(FRAME_width / 8, FRAME_height / 8), CV_8UC1)); // 当該画素が他の画素位置に動くかどうかの判定に用いる．20フレームのどこかで移動する場合はtrueになる、一度も移動しないならfalse
-	//std::vector<cv::Mat> result_lumi(20, cv::Mat::zeros(cv::Size(FRAME_width / 8, FRAME_height / 8), CV_32F));
-	//std::vector<cv::Mat> lumi_map(20, cv::Mat::zeros(cv::Size(FRAME_width / 8, FRAME_height / 8), CV_32F));    // meansが32Fであるから型を合わせる．
-	//std::vector<cv::Mat> comp(20, cv::Mat::zeros(cv::Size(FRAME_width / 8, FRAME_height / 8), CV_8UC1));        // 計算結果がresultに格納されているなら非ゼロを返す
-
 	std::vector<cv::Mat> Is_stop;
 	std::vector<cv::Mat> Is_move;
 	std::vector<cv::Mat> result_lumi;
@@ -268,7 +262,15 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 		result_lumi.push_back(cv::Mat::zeros(cv::Size(FRAME_width / 8, FRAME_height / 8), CV_32F));
 		lumi_map.push_back(cv::Mat::zeros(cv::Size(FRAME_width / 8, FRAME_height / 8), CV_32F));
 		comp.push_back(cv::Mat::zeros(cv::Size(FRAME_width / 8, FRAME_height / 8), CV_8UC1));
+
+		for (int y = 0; y < FRAME_height / block_size; y++) {
+			for (int x = 0; x < FRAME_width / block_size; x++) {
+				lumi_map[i].at<float>(y, x) = -1;
+			}
+		}
 	}
+
+
 
 	// 先に動きベクトルの処理
 	for (int i = num_embedframe - 1; i > 0; i--) {       // この辺の要素数などの兼ね合いをもう一度確かめよう 2020 1_ 17
@@ -298,19 +300,16 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 	int num;          // 現在の画素に割り当てるべき透かしビットを格納
 	// lumi_map求める
 
-
-	std::vector<float> debug_array(num_embedframe);
 	for (int y = 0; y < FRAME_height / block_size; y++) {       
 		for (int x = 0; x < FRAME_width / block_size; x++) {       
 			lumi_map[num_embedframe - 1].at<float>(y, x) = means[num_embedframe - 1].at<float>(y *  block_size, x *  block_size);
 			comp[num_embedframe - 1].at<unsigned char>(y, x) = 1;
 
-
 			int jump_flg = 0;   // 移動した際に移動先のIsstopに-1をつける．そのため最初のifで通った直後に次のループのelseifに引っかからないようにするため
 			int temp_y = y;
 			int temp_x = x;
 			for (int i = num_embedframe - 1; i > 0; i--) {
-				if (Is_stop[i].at<unsigned char>(temp_y, temp_x) == 1) {     // 他の画素位置に移動しているなら
+				if (Is_stop[i].at<unsigned char>(temp_y, temp_x) == 1) {  // 他の画素に移動しているなら
 					std::pair<int, int> back_point;
 					back_point = get_back_pos(mv_all, cframe + i, temp_y, temp_x);
 					lumi_map[i - 1].at<float>(y, x) = means[i - 1].at<float>(back_point.first *  block_size, back_point.second *  block_size);
@@ -319,8 +318,8 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 					temp_x = back_point.second;
 					jump_flg = 1;
 				}
-				else if (Is_stop[i].at<unsigned char>(temp_y, temp_x) == -1 && jump_flg != 1) {       // 移動せず上書きされたならlumi_mapには何も読み込まない
-					continue;
+				else if (Is_stop[i].at<unsigned char>(temp_y, temp_x) == -1 && jump_flg != 1) {       // 移動せず上書きされたならこれ以上lumi_mapには何も読み込まない
+					break;
 				}
 				else {
 					lumi_map[i - 1].at<float>(y, x) = means[i - 1].at<float>(temp_y *  block_size, temp_x *  block_size);
@@ -333,91 +332,90 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 
 	   
 	// 結局この段階でlumi_mapはどうなっているのか，すべて埋まっているのか，穴があるのか．．．
-	// →すべて埋まっている．(動きベクトルファイルはすべてのブロックについて何らかの数値が割り当てられている，それをget_next_posで利用しているのだから当然)
 	// lumi_mapには，lumi_mapの画素位置ごとに先頭フレームからそのブロックがどのように移動したかが書かれている
 	// 穴が発生するのは動きが発生したときのみ
 
 	std::vector<float> lumi(num_embedframe, 0);         //　lumi_mapの各ブロックの輝度値を取り出して，計算する際にfloatにする必要がある
-	int sum_stop;
+	int sum_stop = 0;
 	float ave_lumi = 0;
 	float var_lumi = 0;
 
 	for (int y = 0; y < FRAME_height / block_size; y++) {
 		for (int x = 0; x < FRAME_width / block_size; x++) {
-			num = (embed[(x / block_width) % BG_width + ((y / block_height) % BG_height)*BG_width] == '0') ? 0 : 1;
-			//
-			//int temp_y = y;
-			//int temp_x = x;
+			// 初期化
+			ave_lumi = 0;
+			var_lumi = 0;
+			sum_stop = 0;
+			int no_embed_flg = 0;
+			for (int i = 0; i < num_embedframe; i++) {
+				lumi[i] = 0;
+				if (lumi_map[i].at<float>(y, x) == -1) {
+					no_embed_flg = 1;
+				}
+			}
+
+			if (no_embed_flg == 1) {       // 上書きされた場合
+				continue;
+			}
+
+			num = (embed[(x) % BG_width + ((y) % BG_height)*BG_width] == '0') ? 0 : 1;
 
 			for (int i = num_embedframe - 1; i >= 0; i--) {
 				lumi[i] = lumi_map[i].at<float>(y, x);
-				sum_stop = Is_stop[i].at<unsigned char>(y, x);       // 間違ってると思う
 				ave_lumi += lumi[i];
 			}
-
 			ave_lumi /= num_embedframe;
 			for (int i = 0; i < num_embedframe; i++) {
 				var_lumi += pow((lumi[i] - ave_lumi), 2);
 			}
 			var_lumi / num_embedframe;   // 分散の定義式:(要素-平均)^2 /要素数
 
-			if (sum_stop < 0) {    //　途中で上書きされた場合
-				continue;
-			}
-			else {              // 20フレーム分画素がある場合
-				// 透かしビットに応じて計算
-				if (num == 0) {
-					for (int t_delta = delta; t_delta >= 1; t_delta--) {   // deltaよりもどの程度分散が大きいかどうかで操作する量を決めている
-						if (var_lumi >= t_delta * t_delta) {
-							operate_lumi_for_zero(lumi, ave_lumi, var_lumi, t_delta);
-							break;
-						}
+
+			// 透かしビットに応じて計算
+			if (num == 0) {
+				for (int t_delta = delta; t_delta >= 1; t_delta--) {   // deltaよりもどの程度分散が大きいかどうかで操作する量を決めている
+					if (var_lumi >= t_delta * t_delta) {
+						operate_lumi_for_zero(lumi, ave_lumi, var_lumi, t_delta);
+						break;
 					}
 				}
-				else {    // 透かしビットが1の時
-					  operate_lumi_for_one(lumi, ave_lumi, var_lumi, delta);
-				}
-
-
-				// 埋め込んだ結果をresult_lumiに格納
-				result_lumi[num_embedframe - 1].at<float>(y, x) = lumi[num_embedframe - 1];
-				int temp_y = y;
-				int temp_x = x;
-
-				for (int i = num_embedframe - 1; i > 0; i--) {
-					std::pair<int, int> back_point;
-					back_point = get_back_pos(mv_all, cframe + i, temp_y, temp_x);
-					temp_y = back_point.first;
-					temp_x = back_point.second;
-					result_lumi[i - 1].at<float>(temp_y, temp_x) = lumi[i - 1];    
-				}
+			}
+			else {    // 透かしビットが1の時
+				operate_lumi_for_one(lumi, ave_lumi, var_lumi, delta);
 			}
 
-			// 初期化
-			ave_lumi = 0;
-			var_lumi = 0;
-			sum_stop = 0;
-			for (int i = 0; i < num_embedframe; i++) {
-				lumi[i] = 0;
+
+			// 埋め込んだ結果をresult_lumiに格納
+			result_lumi[num_embedframe - 1].at<float>(y, x) = lumi[num_embedframe - 1];
+			int temp_y = y;
+			int temp_x = x;
+
+			for (int i = num_embedframe - 1; i > 0; i--) {
+				std::pair<int, int> back_point;
+				back_point = get_back_pos(mv_all, cframe + i, temp_y, temp_x);
+				temp_y = back_point.first;
+				temp_x = back_point.second;
+				result_lumi[i - 1].at<float>(temp_y, temp_x) = lumi[i - 1];    
 			}
 		}
 	}
 
 
 	//埋め込み後フレームを返す
+	std::vector<float> temp_debug(num_embedframe);
+	std::vector<float> temp_debug2(num_embedframe);
+
 	for (int i = 0; i < num_embedframe; i++) {
-		for (int y = 0; y < FRAME_height / block_size; y++) {
-			for (int x = 0; x < FRAME_width / block_size; x++) {
+		for (int y = 0; y < FRAME_height / block_height; y++) {
+			for (int x = 0; x < FRAME_width / block_width; x++) {
 				if (comp[i].at<unsigned char>(y, x) == 0) {
 					result_lumi[i].at<float>(y, x) = means[i].at<float>(y * block_height, x *  block_width);
 				}
 			}
 		}
 
-		float temp_debug;
 		for (int y = 0; y < FRAME_height / block_height; y++) {
 			for (int x = 0; x < FRAME_width / block_width; x++) {
-
 				for (int m = 0; m < block_height; m++) {
 					for (int n = 0; n < block_width; n++) {
 						deviations[i].at<float>(y * block_height + m, x * block_width + n) += result_lumi[i].at<float>(y, x);
@@ -430,10 +428,12 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 	for (int i = 0; i < num_embedframe; i++) {
 		dst_luminance.push_back(deviations[i]);
 		dst_luminance[i].convertTo(dst_luminance[i], CV_8UC1);
+
 		//	cv::imshow("0", dst_luminance[i]);
 		//cv::waitKey(200);	
 	}
 }
+
 
 bool is_less_than(float i) {
 	return ((i < average_thisfile) == 1);
@@ -444,6 +444,8 @@ bool is_more_than(float i) {
 }
 
 void operate_lumi_for_one(std::vector<float> &lumi, float average, float variance, int delta) {
+
+
 	size_t index_max, index_min; // 最大、最小の要素の添え字
 	size_t num_low_ave = 0;  // 平均よりも低い個数
 	size_t num_high_ave = 0; //平均よりも高い個数
@@ -466,6 +468,8 @@ void operate_lumi_for_one(std::vector<float> &lumi, float average, float varianc
 
 void operate_lumi_for_zero(std::vector<float> &lumi, float average, float variance, int delta) {  // 平均を維持しつつ、標準偏差を分散未満にする関数
 	// average, varianceはlumiで与えられる輝度値の平均と分散であり、deltaは埋め込み強度
+
+
 	size_t index_max, index_min; // 最大、最小の要素の添え字
 	size_t num_low_ave = 0;  // 平均よりも低い個数
 	size_t num_high_ave = 0; //平均よりも高い個数
