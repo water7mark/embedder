@@ -135,7 +135,20 @@ void change_filename(std::string& read_file,  std::string& write_file, std::stri
 	
 	// motion_vectorの操作
 	change_point = (int)motion_vector_file.find("xxx");
-	motion_vector_file.replace(change_point, 3, mv_label[loop_count - 1]);
+	
+	if (change_point == std::string::npos) {   // xxxが見つからないなら
+		if (motion_vector_file.find("test") != std::string::npos) {
+
+		}
+		else {
+			std::cout << "motion_file dont have xxx string.\n";
+			std::getchar();
+			exit(4);
+		}
+	}
+	else {
+		motion_vector_file.replace(change_point, 3, mv_label[loop_count - 1]);
+	}
 
 	// コンソール出力
 	std::cout << read_file  << std::endl;

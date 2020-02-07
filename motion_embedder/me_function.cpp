@@ -127,6 +127,16 @@ void set_motionvector(const std::string motion_vector_file, std::vector<mv_class
 		getline(ifs, str, ' ');
 
 
+		// debug
+		if (pts == 9) {
+			int debug = 0;
+
+			debug = 4;
+		}
+
+		// debug
+
+
 		if (str.find("pts") != std::string::npos) {          // ptsが出れば、1フレームとみなす 
 			pts++;
 		}
@@ -144,10 +154,18 @@ void set_motionvector(const std::string motion_vector_file, std::vector<mv_class
 			temp_start = str.find("shape");
 
 			for (int i = 0; i < 120 * matrix_height; i++) {
+				// debug 
+				if (i == 120 * 76) {
+					int debug;
+					debug = 77;
+				}
+				// debug
+
+
 				getline(ifs, str, '\t');
 
 				if (i == 0) {
-					temp_str = str.substr(13, str.length() - 13);             //この行大丈夫かな・・・・
+					temp_str = str.substr(14, str.length() - 14);             //この行大丈夫かな・・・・
 				}
 				else if (i % 120 == 0) {   // 行の切れ目の\nを削除
 					temp_str = str.substr(1, str.length() - 1);              // この行ダイジョブかな・・
@@ -175,7 +193,6 @@ void set_motionvector(const std::string motion_vector_file, std::vector<mv_class
 			temp_class.frame_index = -1;
 			temp_class.x_vector = cv::Mat::zeros(cv::Size(FRAME_width / motionvector_block_size, FRAME_height / motionvector_block_size), MV_DETA_SIZE);
 			temp_class.y_vector = cv::Mat::zeros(cv::Size(FRAME_width / motionvector_block_size, FRAME_height / motionvector_block_size), MV_DETA_SIZE);
-
 		}
 	}
 }
@@ -216,6 +233,9 @@ float median(std::vector<float> v) {     // 中央値を返す
 }
 
 void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_luminance, std::vector<char> embed, int cframe, int num_embedframe, int delta, std::string motion_vector_file, std::vector<mv_class>& mv_all) {
+	// cframeは20フレームの先頭フレーム番号が格納されている
+	
+	
 	std::vector<cv::Mat> means;  //ブロック単位の平均輝度値を保持
 	std::vector<cv::Mat> deviations;  //ブロック単位の平均値からの偏差を保持
 	cv::Mat m_means = cv::Mat::zeros(FRAME_width, FRAME_height, CV_32F);  //mフレーム間での「ブロック単位の平均値」の平均値を保持
@@ -223,7 +243,6 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 
 	// ファイルからデータ取得
 	set_motionvector(motion_vector_file, mv_all, cframe);
-
 
 	// means, m_means , deviations, variance の作成
 	for (int i = 0; i < num_embedframe; i++) {    //  各画素の偏差とブロック内平均輝度値を求める
@@ -250,6 +269,8 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 	// 作成終了
 
 
+
+	// 変数宣言＋初期化
 	std::vector<cv::Mat> Is_stop;
 	std::vector<cv::Mat> Is_move;
 	std::vector<cv::Mat> result_lumi;
@@ -257,11 +278,11 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 	std::vector<cv::Mat> comp;
 
 	for (int i = 0; i < num_embedframe; i++) {
-		Is_stop.push_back(cv::Mat::zeros(cv::Size(FRAME_width / 8, FRAME_height / 8), CV_8UC1));
-		Is_move.push_back(cv::Mat::zeros(cv::Size(FRAME_width / 8, FRAME_height / 8), CV_8UC1));
-		result_lumi.push_back(cv::Mat::zeros(cv::Size(FRAME_width / 8, FRAME_height / 8), CV_32F));
-		lumi_map.push_back(cv::Mat::zeros(cv::Size(FRAME_width / 8, FRAME_height / 8), CV_32F));
-		comp.push_back(cv::Mat::zeros(cv::Size(FRAME_width / 8, FRAME_height / 8), CV_8UC1));
+		Is_stop.push_back(cv::Mat::zeros(cv::Size(FRAME_width / block_width, FRAME_height / block_height), CV_16SC1));
+		Is_move.push_back(cv::Mat::zeros(cv::Size(FRAME_width / block_width, FRAME_height / block_height), CV_8UC1));
+		result_lumi.push_back(cv::Mat::zeros(cv::Size(FRAME_width / block_width, FRAME_height / block_height), CV_32F));
+		lumi_map.push_back(cv::Mat::zeros(cv::Size(FRAME_width / block_width, FRAME_height / block_height), CV_32F));
+		comp.push_back(cv::Mat::zeros(cv::Size(FRAME_width / block_width, FRAME_height / block_height), CV_8UC1));
 
 		for (int y = 0; y < FRAME_height / block_size; y++) {
 			for (int x = 0; x < FRAME_width / block_size; x++) {
@@ -272,17 +293,67 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 
 
 
-	// 先に動きベクトルの処理
-	for (int i = num_embedframe - 1; i > 0; i--) {       // この辺の要素数などの兼ね合いをもう一度確かめよう 2020 1_ 17
+	// 動きベクトルの処理
+	for (int i = num_embedframe - 1; i > 0; i--) {       // 先頭フレームの動きベクトルは必要ない
 		for (int y = 0; y < FRAME_height / block_size; y++) {
 			for (int x = 0; x < FRAME_width / block_size; x++) {
+				if (Is_there_mv(mv_all, cframe + i)) {  // これなくても十分	
+					std::pair<int, int> back_point = get_back_pos(mv_all, cframe + i, y, x);    //フレーム番号とptsがごっちゃになっていないか確認する(現在のフレームを返せばいいと思われ)
 
-				if (Is_there_mv(mv_all, cframe + i)) {  // 現在のフレーム番号を与えると動きベクトルが出力されているか返す関数	
-					std::pair<int, int> back_pixel = get_back_pos(mv_all, cframe + i, y, x);    //フレーム番号とptsがごっちゃになっていないか確認する(現在のフレームを返せばいいと思われ)
 
-					Is_stop[i].at<unsigned char>(y, x) = 1;
-					Is_stop[i - 1].at<unsigned char>(back_pixel.first, back_pixel.second) = -1;
-					Is_move[i].at<unsigned char>(y, x) = 1;
+					// debug 
+					if (i == 3 && x == 2) {
+						int debug_aa = 0;
+
+						debug_aa = back_point.second;
+						std::cout << debug_aa << std::endl;
+					}
+
+					// debugend
+
+					if (back_point.first != y || back_point.second != x) {                  // 他の画素位置に移動しているなら
+						if (Is_stop[i].at<short>(y, x) == -1) {     // 既に移動していた場合
+							Is_stop[i].at<short>(y, x) = 2;
+						}
+						else {
+							Is_stop[i].at<short>(y, x) = 1;             // 移動前の位置にチェック
+						}
+
+						Is_stop[i - 1].at<short>(back_point.first, back_point.second) = -1;    // 移動先にもチェック
+						Is_move[i].at<unsigned char>(y, x) = 1;          
+					}
+
+
+
+					//// debug
+					//int debug = 0;
+					//if (i == 4 && x <=6) {
+					//	std::cout << "i == 4" << std::endl;
+					//	for (int j = 0; j < 4; j++) {
+					//		std::cout << Is_stop[i].at<short>(0, j) << std::endl;
+					//	}
+					//}
+					//else if (i == 3 && x <= 6) {
+					//	std::cout << "i == 3" << std::endl;
+					//	for (int j = 0; j < 4; j++) {
+					//		std::cout << Is_stop[i].at<short>(0, j) << std::endl;
+					//	}
+					//}
+					//else if (i == 1 && x <= 6) {
+					//	std::cout << "i == 1" << std::endl;
+					//	for (int j = 0; j < 4; j++) {
+					//		std::cout << Is_stop[i - 1].at<short>(0, j) << std::endl;
+					//	}
+					//}
+					//else if (i == 0 && x <= 6) {
+					//	std::cout << "i == 0" << std::endl;
+					//	for (int j = 0; j < 4; j++) {
+					//		std::cout << Is_stop[i].at<short>(0, j) << std::endl;
+					//	}
+					//}
+
+
+					////debug end
 				}
 				else {
 					// 継続条件を満たさないようにしてforを2つ抜ける
@@ -293,6 +364,19 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 		}
 	}
 
+
+	//// debug
+	//std::cout << Is_stop[3].at<short>(0, 2) << std::endl;
+	//std::cout << Is_stop[2].at<short>(0, 1) << std::endl;
+	//std::cout << Is_stop[1].at<short>(0, 3) << std::endl;
+
+	//std::cout << "aa " << std::endl;
+	//for (int i = 0; i < 4; i++) {
+	//	std::cout << Is_stop[i].at<short>(0, 1) << std::endl;
+	//}
+
+	//// debug end
+
 	//↑途中で上書きされたとしてもその情報は，lumi_mapには載らない(でも，外側のループをnum_embedframeにすれば，)
 
 
@@ -301,7 +385,7 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 	// lumi_map求める
 
 	for (int y = 0; y < FRAME_height / block_size; y++) {       
-		for (int x = 0; x < FRAME_width / block_size; x++) {       
+		for (int x = 0; x < FRAME_width / block_size; x++) { 
 			lumi_map[num_embedframe - 1].at<float>(y, x) = means[num_embedframe - 1].at<float>(y *  block_size, x *  block_size);
 			comp[num_embedframe - 1].at<unsigned char>(y, x) = 1;
 
@@ -309,16 +393,17 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 			int temp_y = y;
 			int temp_x = x;
 			for (int i = num_embedframe - 1; i > 0; i--) {
-				if (Is_stop[i].at<unsigned char>(temp_y, temp_x) == 1) {  // 他の画素に移動しているなら
+				if (Is_stop[i].at<short>(temp_y, temp_x) == 1) {  // 他の画素に移動しているなら
 					std::pair<int, int> back_point;
 					back_point = get_back_pos(mv_all, cframe + i, temp_y, temp_x);
+				
 					lumi_map[i - 1].at<float>(y, x) = means[i - 1].at<float>(back_point.first *  block_size, back_point.second *  block_size);
 					comp[i - 1].at<unsigned char>(back_point.first, back_point.second) = 1;
 					temp_y = back_point.first;
 					temp_x = back_point.second;
 					jump_flg = 1;
 				}
-				else if (Is_stop[i].at<unsigned char>(temp_y, temp_x) == -1 && jump_flg != 1) {       // 移動せず上書きされたならこれ以上lumi_mapには何も読み込まない
+				else if (Is_stop[i].at<short>(temp_y, temp_x) == -1 && jump_flg != 1) {       // 移動せず上書きされたならこれ以上lumi_mapには何も読み込まない
 					break;
 				}
 				else {
@@ -330,15 +415,19 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 		}
 	}
 
-	   
+	////debug
+
+	   	   
 	// 結局この段階でlumi_mapはどうなっているのか，すべて埋まっているのか，穴があるのか．．．
 	// lumi_mapには，lumi_mapの画素位置ごとに先頭フレームからそのブロックがどのように移動したかが書かれている
-	// 穴が発生するのは動きが発生したときのみ
+	// 穴が発生する(-1に初期化されている)のは動きが発生したときのみ
 
 	std::vector<float> lumi(num_embedframe, 0);         //　lumi_mapの各ブロックの輝度値を取り出して，計算する際にfloatにする必要がある
 	int sum_stop = 0;
 	float ave_lumi = 0;
 	float var_lumi = 0;
+	int no_embed_count = 0;
+	int no_embed_pos_count = 0;
 
 	for (int y = 0; y < FRAME_height / block_size; y++) {
 		for (int x = 0; x < FRAME_width / block_size; x++) {
@@ -347,16 +436,19 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 			var_lumi = 0;
 			sum_stop = 0;
 			int no_embed_flg = 0;
-			for (int i = 0; i < num_embedframe; i++) {
+			for (int i = num_embedframe - 1; i >= 0 ; i--) {          
 				lumi[i] = 0;
-				if (lumi_map[i].at<float>(y, x) == -1) {
+				if (lumi_map[i].at<float>(y, x) == -1) {    
 					no_embed_flg = 1;
+					no_embed_pos_count++;
 				}
 			}
 
 			if (no_embed_flg == 1) {       // 上書きされた場合
+				no_embed_count++;
 				continue;
 			}
+
 
 			num = (embed[(x) % BG_width + ((y) % BG_height)*BG_width] == '0') ? 0 : 1;
 
@@ -373,12 +465,12 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 
 			// 透かしビットに応じて計算
 			if (num == 0) {
-				for (int t_delta = delta; t_delta >= 1; t_delta--) {   // deltaよりもどの程度分散が大きいかどうかで操作する量を決めている
-					if (var_lumi >= t_delta * t_delta) {
-						operate_lumi_for_zero(lumi, ave_lumi, var_lumi, t_delta);
-						break;
-					}
-				}
+				//for (int t_delta = delta; t_delta >= 1; t_delta--) {   // deltaよりもどの程度分散が大きいかどうかで操作する量を決めている
+				//	if (var_lumi >= t_delta * t_delta) {
+				//		operate_lumi_for_zero(lumi, ave_lumi, var_lumi, t_delta);
+				//		break;
+				//	}
+				//}
 			}
 			else {    // 透かしビットが1の時
 				operate_lumi_for_one(lumi, ave_lumi, var_lumi, delta);
@@ -432,6 +524,10 @@ void motion_embedder(std::vector<cv::Mat>& luminance, std::vector<cv::Mat> &dst_
 		//	cv::imshow("0", dst_luminance[i]);
 		//cv::waitKey(200);	
 	}
+
+
+	std::cout << "上書きされて埋め込まれない箇所は" << no_embed_pos_count << "個" << std::endl;
+	std::cout << "割り当てられなかった個数は" << no_embed_count << "個" << std::endl;
 }
 
 
@@ -444,8 +540,6 @@ bool is_more_than(float i) {
 }
 
 void operate_lumi_for_one(std::vector<float> &lumi, float average, float variance, int delta) {
-
-
 	size_t index_max, index_min; // 最大、最小の要素の添え字
 	size_t num_low_ave = 0;  // 平均よりも低い個数
 	size_t num_high_ave = 0; //平均よりも高い個数
@@ -517,12 +611,19 @@ void operate_lumi_for_zero(std::vector<float> &lumi, float average, float varian
 
 
 
-int ptob(int pixel_pos) {
-	return pixel_pos * block_size / motionvector_block_size;
+int ptob(int pixel_pos) {      
+	return pixel_pos * block_size / motionvector_block_size;     // この辺も　もう一度チェックする
 }
 
-int btop(int block_pos) {
-	return block_pos / motionvector_block_size * motionvector_block_size / block_size;
+int btop(int block_pos) {   // 絶対値が０でないが１６未満の場合は正の整数なら１，負の整数ならー１を返す
+	if (block_pos < 0 && block_pos > - 16) {
+		return -1;
+	}
+	else if(block_pos > 0 && block_pos < 16) {
+		return 1;
+	}
+
+	return block_pos  / block_size;
 }
 
 
@@ -533,34 +634,50 @@ std::pair<int, int > get_back_pos(std::vector<mv_class>& mv_all, int frame, int 
 	int bl_y = ptob(y);
 	int bl_x = ptob(x);
 
-	std::pair<int, int> back_pos;
+	std::pair<int, int> back_point;
 
 	if (motionvector_block_size == 16) {       // フレームの縦幅が1080の時はマクロブロックサイズ16では割り切れず，8画素分余る．その場合，そのまま座標を返す
 		if (y == 134) {
-			back_pos.first = y;
-			back_pos.second = x;
+			back_point.first = y;
+			back_point.second = x;
 
-			return back_pos;
+			return back_point;
 		}
 	}
 
+	//// debug
+	//int de_bly = ptob(0);
+	//int de_blx = ptob(2);
+	//int debug_tempy = mv_all[3].y_vector.at<MV_DETA_TYPE>(de_bly, de_blx);
+	//int debug_tempx = mv_all[3].x_vector.at<MV_DETA_TYPE>(de_bly, de_blx);
+
+	//back_point = std::make_pair(0 - btop(debug_tempy), 2 - btop(debug_tempx));
+
+	//std::cout << back_point.second << std::endl;
+
+	//for (int i = 0; i < 5; i++) {
+	//	mv_all[9].x_vector;
+	//}
+
+
+	////end debug
 
 	int temp_y = mv_all[frame % num_embedframe].y_vector.at<MV_DETA_TYPE>(bl_y, bl_x);
 	int temp_x = mv_all[frame % num_embedframe].x_vector.at<MV_DETA_TYPE>(bl_y, bl_x);
 
 
-	back_pos = std::make_pair(y - btop(temp_y), x - btop(temp_x));
+	back_point = std::make_pair(y - btop(temp_y), x - btop(temp_x));
 
 
 	// 現状のエラーをとりあえず改善するため
-	if (back_pos.first < 0 || back_pos.first >= (FRAME_height / block_size)) {
-		back_pos.first = y;
+	if (back_point.first < 0 || back_point.first >= (FRAME_height / block_size)) {       // ここが少しおかしいか
+		back_point.first = y;
 	}
-	if (back_pos.second < 0 || back_pos.second >= (FRAME_width / block_size)) {
-		back_pos.second = x;
+	if (back_point.second < 0 || back_point.second >= (FRAME_width / block_size)) {     // ここが少しおかしいか
+		back_point.second = x;
 	}
 
-	return back_pos;
+	return back_point;
 }
 
 

@@ -29,26 +29,25 @@ using comp = std::complex<double>;
 #define PROJECT_LOOP 1
 
 const std::string log_file("C:/Users/youhei/Desktop/research_all/research_data/log_all.txt");
-const std::string embed_file("C:/Users/youhei/Desktop/research_all/research_data/m2_embednum16x9_one16.txt"); 
+const std::string embed_file("C:/Users/youhei/Desktop/research_all/research_data/m2_embed_12x6.txt"); 
 const std::string cosine_file("C:/Users/youhei/Desktop/research_all/research_data/cosine_table.txt");
 
 //parameter
-
 const std::string basis_read_file("C:/IHC_videos/xxx");
-const std::string basis_write_file("C:/Users/youhei/Desktop/research_all/research_data/mp4_embedded_videos/motion_vector/test2_me_xxx_d1");
-const std::string basis_motion_vector_file("C:/share_ubuntu/output/me_embedder_xxx_d1_.csv");       // 動きベクトルの元ファイル
+const std::string basis_write_file("C:/Users/youhei/Desktop/research_all/research_data/mp4_embedded_videos/motion_vector/test_debug_01_mv_xxx_d1");
+const std::string basis_motion_vector_file("C:/share_ubuntu/output/xxx_ori_mp4_aviutl.csv");       // testとして埋め込み後の動きベクトルファイルを用いている
 const int num_embedframe = 20; //1回当たりの処理で埋め込むフレーム数(偶数)
 const double delta = 1; //埋め込み強度
 
-const int BG_width = 16;  // ブロック群の横の長さ
-const int BG_height = 9;  // ブロック群の縦の長さ
-const int block_width = 8; // DCTブロックの横幅
-const int block_height = 8; // DCTブロックの縦幅
+const int BG_width = 12;  // ブロック群の横の長さ
+const int BG_height = 6;  // ブロック群の縦の長さ
+const int block_width = 16; // DCTブロックの横幅
+const int block_height = 16; // DCTブロックの縦幅
 
 const int FRAME_width = 1920;  // フレームの横の長さ
 const int FRAME_height = 1080; // フレームの縦の長さ
 
-const int block_size = 8;  //  DCTブロックのサイズ
+const int block_size = 16;  //  DCTブロックのサイズ
 const int motionvector_block_size = 16; // 動きベクトルのグリッドブロックのサイズ
 
 
